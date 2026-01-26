@@ -32,19 +32,6 @@ app.get('/', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-
-    console.log('--- Available Network Interfaces ---');
-    const { networkInterfaces } = require('os');
-    const nets = networkInterfaces();
-    for (const name of Object.keys(nets)) {
-        for (const net of nets[name]) {
-            // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-            if (net.family === 'IPv4' && !net.internal) {
-                console.log(`Interface: ${name} -> IP: ${net.address}`);
-            }
-        }
-    }
-    console.log('------------------------------------');
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
