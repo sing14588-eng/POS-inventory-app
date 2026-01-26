@@ -1,0 +1,28 @@
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const User = require('./models/User');
+const connectDB = require('./config/db');
+
+dotenv.config();
+connectDB();
+
+const seedAdmin = async () => {
+    try {
+        await User.deleteMany({ email: 'admin@test.com' }); // Clean up if exists
+
+        const adminUser = await User.create({
+            name: 'Admin User',
+            email: 'admin@test.com',
+            password: '123',
+            role: 'admin'
+        });
+
+        console.log('Admin User Created:', adminUser.email);
+        process.exit();
+    } catch (error) {
+        console.error('Error seeding admin:', error);
+        process.exit(1);
+    }
+};
+
+seedAdmin();
