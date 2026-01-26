@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -29,10 +28,9 @@ class ReceiptService {
               pw.SizedBox(height: 10),
               pw.Text('Date: $dateStr'),
               pw.Text(
-                  'Order ID: ${sale.id.substring(max(0, sale.id.length - 8))}'),
+                  'Order ID: ${sale.id.substring(sale.id.length > 8 ? sale.id.length - 8 : 0)}'),
               pw.SizedBox(height: 10),
               pw.Table(
-                border: pw.TableBorder.none,
                 children: [
                   pw.TableRow(
                     children: [
@@ -77,5 +75,3 @@ class ReceiptService {
         onLayout: (PdfPageFormat format) async => pdf.save());
   }
 }
-
-int max(int a, int b) => a > b ? a : b;
