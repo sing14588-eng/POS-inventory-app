@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pos_app/services/api_service.dart';
 import 'package:pos_app/widgets/glass_container.dart';
 import 'package:pos_app/utils/app_theme.dart';
+import 'package:pos_app/utils/validators.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -135,7 +136,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           labelText: 'Full Name',
                           prefixIcon: Icon(Icons.person),
                           border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                      validator: (v) =>
+                          Validators.required(v, error: 'Name is required'),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -144,7 +146,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           labelText: 'Email',
                           prefixIcon: Icon(Icons.email),
                           border: OutlineInputBorder()),
-                      validator: (v) => v!.isEmpty ? 'Required' : null,
+                      validator: (v) => Validators.email(v),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -154,7 +156,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           prefixIcon: Icon(Icons.lock),
                           border: OutlineInputBorder()),
                       obscureText: true,
-                      validator: (v) => v!.length < 3 ? 'Min 3 chars' : null,
+                      validator: (v) => Validators.password(v, minLength: 6),
                     ),
                     const SizedBox(height: 16),
                     const Text('Assign Roles:',

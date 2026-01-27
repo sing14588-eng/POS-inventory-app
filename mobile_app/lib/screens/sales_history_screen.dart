@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:pos_app/providers/app_data_provider.dart';
+import 'package:pos_app/providers/auth_provider.dart';
 import 'package:pos_app/utils/app_theme.dart';
 import 'package:pos_app/widgets/glass_container.dart';
 import 'package:pos_app/models/sale_model.dart';
 import 'package:pos_app/services/receipt_service.dart';
+import 'package:pos_app/services/sensory_service.dart';
 
 class SalesHistoryScreen extends StatefulWidget {
   const SalesHistoryScreen({super.key});
@@ -101,8 +103,14 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 children: [
                   ElevatedButton.icon(
                     onPressed: () {
+                      final auth =
+                          Provider.of<AuthProvider>(context, listen: false);
                       Navigator.pop(context);
-                      ReceiptService.generateAndPrintReceipt(sale);
+                      if (auth.currentCompany != null) {
+                        SensoryService.successVibration();
+                        ReceiptService.generateAndPrintReceipt(
+                            sale, auth.currentCompany!);
+                      }
                     },
                     icon: const Icon(Icons.print),
                     label: const Text('Print'),
@@ -111,6 +119,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
+                        SensoryService.successVibration();
                         _showRefundDialog(sale.id);
                       },
                       icon: const Icon(Icons.replay, color: Colors.orange),

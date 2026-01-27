@@ -10,6 +10,8 @@ const productSchema = mongoose.Schema({
     shelfLocation: { type: String, required: true }, // e.g., A-1
     price: { type: Number, required: true, default: 0 }, // Added price for POS calculation
     barcode: { type: String, unique: true, sparse: true },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+    branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
 }, {
     timestamps: true,
 });

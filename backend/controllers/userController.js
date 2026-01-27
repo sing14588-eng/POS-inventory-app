@@ -5,7 +5,14 @@ const User = require('../models/User');
 // @access  Private (Admin)
 const getUsers = async (req, res) => {
     try {
-        const users = await User.find({}).select('-password');
+        let query = { company: req.companyId };
+
+        // Super Admin sees all
+        if (req.user.roles.includes('super_admin')) {
+            query = {};
+        }
+
+        const users = await User.find(query).select('-password');
         res.json(users);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -29,6 +36,7 @@ const createUser = async (req, res) => {
             email,
             password,
             roles: roles || ['sales'], // Default to sales if not provided
+            company: req.companyId
         });
 
         if (user) {
@@ -81,4 +89,19 @@ const updateUser = async (req, res) => {
     }
 };
 
-module.exports = { getUsers, createUser, updateUser };
+const completeOnboarding = async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id);
+        if (user) {
+            user.onboardingCompleted = true;
+            await user.save();
+            res.json({ message: 'Onboarding marked as complete' });
+        } else {
+            res.status(404).json({ message: 'User not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = { getUsers, createUser, updateUser, changePassword, completeOnboarding };

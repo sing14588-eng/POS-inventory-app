@@ -15,6 +15,18 @@ const protect = async (req, res, next) => {
 
             req.user = await User.findById(decoded.id).select('-password');
 
+            if (!req.user) {
+                return res.status(401).json({ message: 'User not found' });
+            }
+
+            if (!req.user.isActive) {
+                return res.status(401).json({ message: 'User account is deactivated' });
+            }
+
+            // Attach company and branch context
+            req.companyId = req.user.company;
+            req.branchId = req.user.branch;
+
             next();
         } catch (error) {
             console.error(error);
@@ -27,11 +39,21 @@ const protect = async (req, res, next) => {
     }
 };
 
-const authorize = (...roles) => {
+const authorize = (...requiredRoles) => {
     return (req, res, next) => {
-        if (!roles.includes(req.user.role)) {
+        if (!req.user || !req.user.roles) {
+            return res.status(403).json({ message: 'Access denied' });
+        }
+
+        // Super Admin bypass
+        if (req.user.roles.includes('super_admin')) {
+            return next();
+        }
+
+        const hasRole = req.user.roles.some(role => requiredRoles.includes(role));
+        if (!hasRole) {
             return res.status(403).json({
-                message: `User role ${req.user.role} is not authorized to access this route`
+                message: `Your roles are not authorized to access this route`
             });
         }
         next();

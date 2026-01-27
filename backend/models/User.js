@@ -9,9 +9,19 @@ const userSchema = mongoose.Schema({
     roles: [{
         type: String,
         required: true,
-        enum: ['sales', 'picker', 'accountant', 'warehouse', 'admin']
+        enum: ['sales', 'picker', 'accountant', 'warehouse', 'admin', 'super_admin']
     }],
+    company: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Company',
+        required: false // Optional for super_admins or during migration
+    },
+    branch: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Branch'
+    },
     isActive: { type: Boolean, default: true },
+    onboardingCompleted: { type: Boolean, default: false },
 }, {
     timestamps: true,
 });

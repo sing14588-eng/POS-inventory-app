@@ -1,4 +1,6 @@
 const Product = require('../models/Product');
+const { logAction } = require('../utils/auditLogger');
+const { sendNotification } = require('../utils/notificationService');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -10,7 +12,10 @@ const getProducts = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const { barcode } = req.query;
-        let query = {};
+        let query = { company: req.companyId };
+        if (req.branchId) {
+            query.branch = req.branchId;
+        }
         if (barcode) {
             query.barcode = barcode;
         }
@@ -54,10 +59,20 @@ const createProduct = async (req, res) => {
             currentStock,
             shelfLocation,
             price,
-            barcode
+            barcode,
+            company: req.companyId,
+            branch: req.branchId
         });
 
         const createdProduct = await product.save();
+
+        await logAction(req, {
+            action: 'PRODUCT_CREATED',
+            details: `Created product ${name} with stock ${currentStock}`,
+            itemType: 'Product',
+            itemId: createdProduct._id
+        });
+
         res.status(201).json(createdProduct);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -78,6 +93,26 @@ const updateProduct = async (req, res) => {
             product.shelfLocation = shelfLocation ?? product.shelfLocation;
 
             const updatedProduct = await product.save();
+
+            await logAction(req, {
+                action: 'PRODUCT_UPDATED',
+                details: `Updated product ${product.name}. Stock now: ${product.currentStock}`,
+                itemType: 'Product',
+                itemId: product._id
+            });
+
+            if (product.currentStock < 10) {
+                await sendNotification({
+                    company: req.companyId,
+                    branch: req.branchId,
+                    roles: ['admin', 'warehouse'],
+                    title: 'Low Stock Alert',
+                    message: `${product.name} is running low (${product.currentStock} left).`,
+                    type: 'WARNING',
+                    data: { productId: product._id.toString() }
+                });
+            }
+
             res.json(updatedProduct);
         } else {
             res.status(404).json({ message: 'Product not found' });

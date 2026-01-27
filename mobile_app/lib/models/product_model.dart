@@ -21,7 +21,10 @@ class Product {
     required this.shelfLocation,
     required this.price,
     this.barcode,
+    this.branchId,
   });
+
+  final String? branchId;
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
@@ -35,6 +38,7 @@ class Product {
       shelfLocation: json['shelfLocation'],
       price: json['price'] ?? 0,
       barcode: json['barcode'],
+      branchId: json['branch'],
     );
   }
 }

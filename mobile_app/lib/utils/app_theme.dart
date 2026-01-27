@@ -134,4 +134,28 @@ class AppTheme {
       ),
     );
   }
+
+  static ThemeData getBrandedTheme(Color brandColor, Brightness brightness) {
+    final baseTheme = brightness == Brightness.light ? lightTheme : darkTheme;
+    return baseTheme.copyWith(
+      primaryColor: brandColor,
+      colorScheme: baseTheme.colorScheme.copyWith(
+        primary: brandColor,
+        secondary: secondaryColor,
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: baseTheme.elevatedButtonTheme.style?.copyWith(
+          backgroundColor: WidgetStateProperty.all(brandColor),
+        ),
+      ),
+    );
+  }
+
+  static Color hexToColor(String hexString) {
+    if (hexString.isEmpty) return primaryColor;
+    final buffer = StringBuffer();
+    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
+    buffer.write(hexString.replaceFirst('#', ''));
+    return Color(int.parse(buffer.toString(), radix: 16));
+  }
 }

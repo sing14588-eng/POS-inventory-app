@@ -43,6 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
           Navigator.pushReplacementNamed(context, '/warehouse');
         } else if (role == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin');
+        } else if (role == 'super_admin') {
+          Navigator.pushReplacementNamed(context, '/super-admin');
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

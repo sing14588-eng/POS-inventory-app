@@ -10,6 +10,10 @@ import 'package:pos_app/widgets/glass_container.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pos_app/screens/barcode_scanner_screen.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:pos_app/services/receipt_service.dart';
+import 'package:pos_app/services/sensory_service.dart';
+import 'package:pos_app/services/onboarding_service.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 
 class SalesDashboard extends StatefulWidget {
   const SalesDashboard({super.key});
@@ -23,16 +27,115 @@ class _SalesDashboardState extends State<SalesDashboard> {
   bool _isCredit = false;
   final ScrollController _scrollController = ScrollController();
 
+  final GlobalKey _searchKey = GlobalKey();
+  final GlobalKey _scanKey = GlobalKey();
+  final GlobalKey _notificationsKey = GlobalKey();
+  final GlobalKey _profileKey = GlobalKey();
+  final GlobalKey _historyKey = GlobalKey();
+  final GlobalKey _cartKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        Provider.of<AppDataProvider>(context, listen: false)
-            .fetchProducts(refresh: true);
+        final dataProvider =
+            Provider.of<AppDataProvider>(context, listen: false);
+        dataProvider.fetchProducts(refresh: true);
+
+        _checkOnboarding();
       }
     });
+  }
+
+  void _checkOnboarding() {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    if (!auth.onboardingCompleted) {
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) _showOnboardingWelcome();
+      });
+    }
+  }
+
+  void _showOnboardingWelcome() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Welcome! 🚀'),
+        content: const Text(
+            'Would you like a quick 1-minute tour of your Sales Dashboard?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Provider.of<AuthProvider>(context, listen: false)
+                  .completeOnboarding();
+            },
+            child: const Text('Skip'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _startTour();
+            },
+            child: const Text('Start Tour'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _startTour() {
+    List<TargetFocus> targets = [];
+
+    targets.add(OnboardingService.createTarget(
+      key: _searchKey,
+      identify: "search",
+      title: "Product Search",
+      content: "Quickly find products by name or category here.",
+    ));
+
+    targets.add(OnboardingService.createTarget(
+      key: _scanKey,
+      identify: "scan",
+      title: "Barcode Scanner",
+      content: "Tap here to scan product barcodes and add them to your cart.",
+    ));
+
+    targets.add(OnboardingService.createTarget(
+      key: _cartKey,
+      identify: "cart",
+      title: "Shopping Cart",
+      content: "Review selected items, set credit status, and checkout here.",
+    ));
+
+    targets.add(OnboardingService.createTarget(
+      key: _historyKey,
+      identify: "history",
+      title: "Sales History",
+      content: "View your past sales and print receipts from here.",
+      align: ContentAlign.top,
+    ));
+
+    targets.add(OnboardingService.createTarget(
+      key: _notificationsKey,
+      identify: "notifications",
+      title: "Notifications",
+      content: "Stay updated on low stock alerts and restock requests.",
+    ));
+
+    OnboardingService.showTour(
+      context,
+      targets: targets,
+      onFinish: () {
+        Provider.of<AuthProvider>(context, listen: false).completeOnboarding();
+      },
+      onSkip: () {
+        Provider.of<AuthProvider>(context, listen: false).completeOnboarding();
+      },
+    );
   }
 
   void _onScroll() {
@@ -56,8 +159,11 @@ class _SalesDashboardState extends State<SalesDashboard> {
       setState(() {
         _cart[product.id] = (_cart[product.id] ?? 0) + 1;
       });
+      SensoryService.successVibration();
       // Minimal feedback as we have a reactive cart summary
     } else {
+      SensoryService.playError();
+      SensoryService.errorVibration();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Out of Stock'),
@@ -345,16 +451,20 @@ class _SalesDashboardState extends State<SalesDashboard> {
       );
     }).toList();
 
-    final success = await dataProvider.createSale(saleItems, _isCredit);
+    final createdSale = await dataProvider.createSale(saleItems, _isCredit);
 
     if (mounted) {
-      if (success) {
+      if (createdSale != null) {
         setState(() {
           _cart.clear();
           _isCredit = false;
         });
-        _showSuccessDialog();
+        SensoryService.playSuccess();
+        SensoryService.successVibration();
+        _showSuccessDialog(createdSale);
       } else {
+        SensoryService.playError();
+        SensoryService.errorVibration();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Sale Failed'), backgroundColor: Colors.red),
@@ -363,7 +473,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
     }
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog(Sale sale) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -389,10 +499,34 @@ class _SalesDashboardState extends State<SalesDashboard> {
               const SizedBox(height: 8),
               const Text('Transaction completed successfully.',
                   textAlign: TextAlign.center),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
+              Text('Order Total: \$${sale.totalAmount}',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final auth =
+                            Provider.of<AuthProvider>(context, listen: false);
+                        if (auth.currentCompany != null) {
+                          ReceiptService.generateAndPrintReceipt(
+                              sale, auth.currentCompany!);
+                        }
+                      },
+                      icon: const Icon(Icons.print),
+                      label: const Text('Print Receipt'),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Continue'),
                 ),
@@ -407,7 +541,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
   @override
   Widget build(BuildContext context) {
     final dataProvider = Provider.of<AppDataProvider>(context);
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context);
     final products = dataProvider.products;
 
     return Scaffold(
@@ -445,7 +579,16 @@ class _SalesDashboardState extends State<SalesDashboard> {
                   pinned: true,
                   backgroundColor:
                       Colors.transparent, // Let body logic handle bg
-                  title: Text('POS Terminal',
+                  leading:
+                      authProvider.currentCompany?.logoUrl.isNotEmpty == true
+                          ? Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Image.network(
+                                  authProvider.currentCompany!.logoUrl),
+                            )
+                          : null,
+                  title: Text(
+                      authProvider.currentCompany?.name ?? 'Sales Point',
                       style: Theme.of(context)
                           .textTheme
                           .headlineSmall
@@ -465,17 +608,30 @@ class _SalesDashboardState extends State<SalesDashboard> {
                       },
                     ),
                     IconButton(
+                      key: _historyKey,
                       icon: const Icon(Icons.history,
                           color: AppTheme.primaryColor),
                       onPressed: () =>
                           Navigator.pushNamed(context, '/sales/history'),
                     ),
+                    Consumer<AppDataProvider>(
+                      builder: (context, data, _) => IconButton(
+                        key: _notificationsKey,
+                        icon: Badge(
+                          label: data.unreadNotifications > 0
+                              ? Text('${data.unreadNotifications}')
+                              : null,
+                          isLabelVisible: data.unreadNotifications > 0,
+                          child: const Icon(Icons.notifications_outlined),
+                        ),
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/notifications'),
+                      ),
+                    ),
                     IconButton(
-                      icon: const Icon(Icons.logout_rounded),
-                      onPressed: () {
-                        authProvider.logout();
-                        Navigator.pushReplacementNamed(context, '/');
-                      },
+                      key: _profileKey,
+                      icon: const Icon(Icons.person_outline),
+                      onPressed: () => Navigator.pushNamed(context, '/profile'),
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
@@ -488,6 +644,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
                         alignment: Alignment.bottomCenter,
                         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                         child: TextField(
+                          key: _searchKey,
                           decoration: InputDecoration(
                             hintText: 'Search products...',
                             prefixIcon: const Icon(Icons.search),
@@ -500,6 +657,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
                             contentPadding:
                                 const EdgeInsets.symmetric(horizontal: 16),
                             suffixIcon: IconButton(
+                              key: _scanKey,
                               icon: const Icon(Icons.qr_code_scanner),
                               onPressed: () async {
                                 final code = await Navigator.push(
@@ -581,6 +739,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
       ),
       floatingActionButton: _cartTotalItems > 0
           ? FloatingActionButton.extended(
+              key: _cartKey,
               onPressed: _showCartSheet,
               label: Row(
                 children: [

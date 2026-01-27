@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:pos_app/models/product_model.dart';
 import 'package:pos_app/models/sale_model.dart';
+import 'package:pos_app/models/company_model.dart';
 import 'package:pos_app/services/api_service.dart';
 import 'package:pos_app/services/offline_service.dart';
 import 'package:pos_app/services/error_service.dart';
+import 'package:pos_app/models/branch_model.dart';
+import 'package:pos_app/models/notification_model.dart';
+import 'package:pos_app/models/audit_log_model.dart';
+import 'package:pos_app/models/supplier_model.dart';
+import 'package:pos_app/models/purchase_order_model.dart';
 
 class AppDataProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -22,6 +28,36 @@ class AppDataProvider with ChangeNotifier {
 
   Map<String, dynamic>? _dailyReport;
   Map<String, dynamic>? get dailyReport => _dailyReport;
+
+  List<Company> _companies = [];
+  List<Company> get companies => _companies;
+
+  Map<String, dynamic>? _globalStats;
+  Map<String, dynamic>? get globalStats => _globalStats;
+
+  bool _isLoadingCompanies = false;
+  bool get isLoadingCompanies => _isLoadingCompanies;
+
+  List<Branch> _branches = [];
+  List<Branch> get branches => _branches;
+
+  List<AppNotification> _notifications = [];
+  List<AppNotification> get notifications => _notifications;
+
+  List<AuditLog> _auditLogs = [];
+  List<AuditLog> get auditLogs => _auditLogs;
+
+  List<Supplier> _suppliers = [];
+  List<Supplier> get suppliers => _suppliers;
+
+  List<PurchaseOrder> _purchaseOrders = [];
+  List<PurchaseOrder> get purchaseOrders => _purchaseOrders;
+
+  Map<String, dynamic>? _analytics;
+  Map<String, dynamic>? get analytics => _analytics;
+
+  int _unreadNotifications = 0;
+  int get unreadNotifications => _unreadNotifications;
 
   // Pagination state
   int _productPage = 1;
@@ -190,29 +226,33 @@ class AppDataProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createSale(List<SaleItem> items, bool isCredit) async {
+  Future<Sale?> createSale(List<SaleItem> items, bool isCredit) async {
     try {
-      await _apiService.postAuth('/sales', {
+      final data = await _apiService.postAuth('/sales', {
         'items': items.map((e) => e.toJson()).toList(),
         'isCredit': isCredit,
       });
       // Refresh products to show updated stock
       await fetchProducts();
-      return true;
+      return Sale.fromJson(data);
     } catch (e) {
       debugPrint("Sales creation error: $e");
       // If offline, queue it
       if (!await OfflineService().isOnline) {
-        await OfflineService().queueSale({
+        final mockSale = {
           'items': items.map((e) => e.toJson()).toList(),
           'isCredit': isCredit,
+          'totalAmount': items.fold(0.0, (sum, i) => sum + i.total),
+          'vatAmount': items.fold(0.0, (sum, i) => sum + i.total) * 0.15,
           'createdAt': DateTime.now().toIso8601String(),
-        });
+          '_id': 'OFFLINE_${DateTime.now().millisecondsSinceEpoch}',
+        };
+        await OfflineService().queueSale(mockSale);
         ErrorService.showError("Offline: Sale saved to queue");
-        return true;
+        return Sale.fromJson(mockSale);
       }
       ErrorService.showError("Failed to process sale: $e");
-      return false;
+      return null;
     }
   }
 
@@ -337,6 +377,191 @@ class AppDataProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint("Fetch refunds error: $e");
+    }
+  }
+
+  // Super Admin Methods
+  Future<void> fetchCompanies() async {
+    _isLoadingCompanies = true;
+    notifyListeners();
+    try {
+      final data = await _apiService.get('/companies');
+      _companies = (data as List).map((i) => Company.fromJson(i)).toList();
+    } catch (e) {
+      debugPrint("Fetch companies error: $e");
+    } finally {
+      _isLoadingCompanies = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createCompany(Map<String, dynamic> companyData) async {
+    try {
+      await _apiService.postAuth('/companies', companyData);
+      await fetchCompanies();
+      return true;
+    } catch (e) {
+      debugPrint("Create company error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateCompany(String id, Map<String, dynamic> body) async {
+    try {
+      await _apiService.put('/companies/$id', body);
+      await fetchCompanies();
+      return true;
+    } catch (e) {
+      debugPrint("Update company error: $e");
+      return false;
+    }
+  }
+
+  Future<void> updateCompanyStatus(String id, bool isActive) async {
+    try {
+      await _apiService.put('/companies/$id', {'isActive': isActive});
+      await fetchCompanies();
+    } catch (e) {
+      debugPrint("Update company error: $e");
+    }
+  }
+
+  Future<void> fetchGlobalStats() async {
+    try {
+      final data = await _apiService.get('/reports/global');
+      _globalStats = data;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch global stats error: $e");
+    }
+  }
+
+  // Visual Analytics
+  Future<void> fetchAnalytics() async {
+    try {
+      final data = await _apiService.get('/reports/analytics');
+      _analytics = data;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch analytics error: $e");
+    }
+  }
+
+  // Branch Management
+  Future<void> fetchBranches() async {
+    try {
+      final data = await _apiService.get('/branches');
+      _branches = (data as List).map((i) => Branch.fromJson(i)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch branches error: $e");
+    }
+  }
+
+  Future<bool> createBranch(Map<String, dynamic> body) async {
+    try {
+      await _apiService.postAuth('/branches', body);
+      await fetchBranches();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateBranchStatus(String id, bool isActive) async {
+    try {
+      await _apiService.put('/branches/$id', {'isActive': isActive});
+      await fetchBranches();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Notifications
+  Future<void> fetchNotifications() async {
+    try {
+      final data = await _apiService.get('/notifications');
+      _notifications =
+          (data as List).map((i) => AppNotification.fromJson(i)).toList();
+      _unreadNotifications = _notifications.where((n) => !n.isRead).length;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch notifications error: $e");
+    }
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    try {
+      await _apiService.put('/notifications/$id/read', {});
+      await fetchNotifications();
+    } catch (e) {
+      debugPrint("Mark read error: $e");
+    }
+  }
+
+  // Audit Logs
+  Future<void> fetchAuditLogs() async {
+    try {
+      final data = await _apiService.get('/audit');
+      _auditLogs =
+          (data['logs'] as List).map((i) => AuditLog.fromJson(i)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch audit logs error: $e");
+    }
+  }
+
+  // Inventory (Suppliers & POs)
+  Future<void> fetchSuppliers() async {
+    try {
+      final data = await _apiService.get('/inventory/suppliers');
+      _suppliers = (data as List).map((i) => Supplier.fromJson(i)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch suppliers error: $e");
+    }
+  }
+
+  Future<bool> createSupplier(Map<String, dynamic> body) async {
+    try {
+      await _apiService.postAuth('/inventory/suppliers', body);
+      await fetchSuppliers();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> fetchPurchaseOrders() async {
+    try {
+      final data = await _apiService.get('/inventory');
+      _purchaseOrders =
+          (data as List).map((i) => PurchaseOrder.fromJson(i)).toList();
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch POs error: $e");
+    }
+  }
+
+  Future<bool> createPO(Map<String, dynamic> body) async {
+    try {
+      await _apiService.postAuth('/inventory', body);
+      await fetchPurchaseOrders();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updatePOStatus(String id, String status) async {
+    try {
+      await _apiService.put('/inventory/$id', {'status': status});
+      await fetchPurchaseOrders();
+      await fetchProducts(); // Stock might have updated
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 }

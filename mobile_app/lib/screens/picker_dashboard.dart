@@ -39,20 +39,24 @@ class _PickerDashboardState extends State<PickerDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     final dataProvider = Provider.of<AppDataProvider>(context);
     final orders = dataProvider.pickerOrders;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pending Orders'),
+        leading: authProvider.currentCompany?.logoUrl.isNotEmpty == true
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.network(authProvider.currentCompany!.logoUrl),
+              )
+            : null,
+        title: Text(authProvider.currentCompany?.name ?? 'Orders'),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            icon: const Icon(Icons.person_outline),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
           )
         ],
       ),

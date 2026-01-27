@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:pos_app/services/sensory_service.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
   const BarcodeScannerScreen({super.key});
@@ -22,6 +23,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           if (barcodes.isNotEmpty && barcodes.first.rawValue != null) {
             _isScanned = true;
             final String code = barcodes.first.rawValue!;
+            SensoryService.playScan();
+            SensoryService.successVibration();
             Navigator.pop(context, code);
           }
         },

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Company = require('../models/Company');
 const jwt = require('jsonwebtoken');
 
 const generateToken = (id) => {
@@ -20,11 +21,15 @@ const loginUser = async (req, res) => {
             return res.status(403).json({ message: 'Account is suspended. Contact Admin.' });
         }
 
+        const populatedUser = await User.findById(user._id).populate('company').populate('branch');
+
         res.json({
             _id: user._id,
             name: user.name,
             email: user.email,
-            roles: user.roles, // Changed from role
+            roles: user.roles,
+            company: populatedUser.company ? populatedUser.company : null,
+            branch: populatedUser.branch ? populatedUser.branch : null,
             token: generateToken(user._id),
         });
     } else {
@@ -36,23 +41,29 @@ const loginUser = async (req, res) => {
 // @route   POST /api/auth/seed
 // @access  Public (for initial setup)
 const seedUsers = async (req, res) => {
-    const users = [
-        { name: 'Sales User', email: 'sales@test.com', password: '123', roles: ['sales'] },
-        { name: 'Picker User', email: 'picker@test.com', password: '123', roles: ['picker'] },
-        { name: 'Accountant User', email: 'acc@test.com', password: '123', roles: ['accountant'] },
-        { name: 'Warehouse User', email: 'ware@test.com', password: '123', roles: ['warehouse'] },
-        { name: 'Super Admin', email: 'admin@test.com', password: '123', roles: ['admin', 'sales', 'warehouse', 'accountant', 'picker'] },
-    ];
-
     try {
-        await User.deleteMany(); // Clear existing
+        await Company.deleteMany();
+        await User.deleteMany();
 
-        // Loop to trigger pre-save hook for hashing
+        const company = await Company.create({
+            name: 'Default POS Shop',
+            email: 'main@pos.com',
+            plan: 'premium'
+        });
+
+        const users = [
+            { name: 'Sales User', email: 'sales@test.com', password: '123', roles: ['sales'], company: company._id },
+            { name: 'Warehouse User', email: 'ware@test.com', password: '123', roles: ['warehouse'], company: company._id },
+            { name: 'Accountant User', email: 'acc@test.com', password: '123', roles: ['accountant'], company: company._id },
+            { name: 'Admin User', email: 'admin@test.com', password: '123', roles: ['admin'], company: company._id },
+            { name: 'Super Admin', email: 'super@test.com', password: '123', roles: ['super_admin'] }, // No company for super admin
+        ];
+
         for (const user of users) {
             await User.create(user);
         }
 
-        res.json(users);
+        res.json({ message: 'Seeded successfully', company, userCount: users.length });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

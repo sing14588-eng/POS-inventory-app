@@ -1,32 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:pos_app/providers/auth_provider.dart';
 import 'package:pos_app/widgets/glass_container.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
+import 'package:pos_app/providers/auth_provider.dart';
+import 'package:pos_app/providers/app_data_provider.dart';
+import 'package:pos_app/widgets/professional_drawer.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Admin Console',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+        leading: authProvider.currentCompany?.logoUrl.isNotEmpty == true
+            ? Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.network(authProvider.currentCompany!.logoUrl),
+              )
+            : null,
+        title: Text(authProvider.currentCompany?.name ?? 'Admin Console',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
+          Consumer<AppDataProvider>(
+            builder: (context, data, _) => IconButton(
+              icon: Badge(
+                label: data.unreadNotifications > 0
+                    ? Text('${data.unreadNotifications}')
+                    : null,
+                isLabelVisible: data.unreadNotifications > 0,
+                child: const Icon(Icons.notifications_outlined,
+                    color: Colors.black87),
+              ),
+              onPressed: () => Navigator.pushNamed(context, '/notifications'),
+            ),
+          ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black87),
-            onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.pushReplacementNamed(context, '/');
-            },
+            icon: const Icon(Icons.person_outline, color: Colors.black87),
+            onPressed: () => Navigator.pushNamed(context, '/profile'),
           )
         ],
       ),
+      drawer: const ProfessionalDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(

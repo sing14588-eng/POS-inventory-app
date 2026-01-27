@@ -6,6 +6,8 @@ class StorageService {
   static const String _tokenKey = 'token';
   static const String _roleKey = 'role';
   static const String _userIdKey = 'userId';
+  static const String _companyIdKey = 'companyId';
+  static const String _companyNameKey = 'companyName';
 
   // Token
   Future<void> saveToken(String token) async {
@@ -36,6 +38,23 @@ class StorageService {
 
   Future<String?> getUserId() async {
     return await _storage.read(key: _userIdKey);
+  }
+
+  // Company Info
+  Future<void> saveCompanyId(String id) async {
+    await _storage.write(key: _companyIdKey, value: id);
+  }
+
+  Future<String?> getCompanyId() async {
+    return await _storage.read(key: _companyIdKey);
+  }
+
+  Future<void> saveCompanyName(String name) async {
+    await _storage.write(key: _companyNameKey, value: name);
+  }
+
+  Future<String?> getCompanyName() async {
+    return await _storage.read(key: _companyNameKey);
   }
 
   // Clear All (Logout)

@@ -5,6 +5,7 @@ import 'package:pos_app/models/product_model.dart';
 import 'package:pos_app/utils/app_theme.dart';
 import 'package:pos_app/screens/barcode_scanner_screen.dart';
 import 'package:pos_app/utils/validators.dart';
+import 'package:pos_app/services/sensory_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -31,42 +32,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
   bool _isLoading = false;
 
   void _submit() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
+    if (!_formKey.currentState!.validate()) return;
 
-      final product = Product(
-        id: '',
-        name: _nameController.text,
-        category: _category,
-        size: _size,
-        fruitQuantity: int.tryParse(_fruitQtyController.text) ?? 0,
-        unitType: _unitType,
-        currentStock: int.parse(_stockController.text),
-        shelfLocation: _locationController.text,
-        price: int.parse(_priceController.text),
-        barcode:
-            _barcodeController.text.isEmpty ? null : _barcodeController.text,
-      );
+    setState(() => _isLoading = true);
 
-      final success = await Provider.of<AppDataProvider>(context, listen: false)
-          .createProduct(product);
+    final product = Product(
+      id: '',
+      name: _nameController.text,
+      category: _category,
+      size: _size,
+      fruitQuantity: int.tryParse(_fruitQtyController.text) ?? 0,
+      unitType: _unitType,
+      currentStock: int.parse(_stockController.text),
+      shelfLocation: _locationController.text,
+      price: int.parse(_priceController.text),
+      barcode: _barcodeController.text.isEmpty ? null : _barcodeController.text,
+    );
 
-      if (mounted) {
-        setState(() => _isLoading = false);
-        if (success) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Product Added Successfully'),
-                backgroundColor: Colors.green),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Failed to add product'),
-                backgroundColor: Colors.red),
-          );
-        }
+    final success = await Provider.of<AppDataProvider>(context, listen: false)
+        .createProduct(product);
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+      if (success) {
+        Navigator.pop(context);
+        SensoryService.playSuccess();
+        SensoryService.successVibration();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Product Added Successfully'),
+              backgroundColor: Colors.green),
+        );
+      } else {
+        SensoryService.playError();
+        SensoryService.errorVibration();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Failed to add product'),
+              backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -82,7 +86,41 @@ class _AddProductScreenState extends State<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionHeader('Product Details'),
+              _buildSectionHeader('Basic Information'),
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _nameController,
+                label: 'Product Name',
+                icon: Icons.inventory_2_outlined,
+                validator: (v) =>
+                    Validators.required(v, error: 'Product name is required'),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _priceController,
+                      label: 'Price',
+                      icon: Icons.attach_money,
+                      keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          Validators.positiveNumber(v, fieldName: 'Price'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTextField(
+                      controller: _stockController,
+                      label: 'Initial Stock',
+                      icon: Icons.numbers,
+                      keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          Validators.number(v, fieldName: 'Stock'),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _barcodeController,
@@ -104,43 +142,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     },
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                    labelText: 'Product Name',
-                    prefixIcon: Icon(Icons.label_outline)),
-                validator: (v) =>
-                    Validators.required(v, error: 'Product name is required'),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      decoration: const InputDecoration(
-                          labelText: 'Price',
-                          prefixIcon: Icon(Icons.attach_money)),
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          Validators.positiveNumber(v, fieldName: 'Price'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _stockController,
-                      decoration: const InputDecoration(
-                          labelText: 'Stock',
-                          prefixIcon: Icon(Icons.inventory)),
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          Validators.number(v, fieldName: 'Stock'),
-                    ),
-                  ),
-                ],
               ),
               const SizedBox(height: 24),
               _buildSectionHeader('Category'),
@@ -191,14 +192,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                   );
                 }).toList(),
               ),
-              if (_category == 'Cushion' || true) ...[
-                // Showing for all just in case, logic specific to "Fruit" logic was removed in request? Keeping generic
+              if (_category == 'Cushion') ...[
                 const SizedBox(height: 16),
-                TextFormField(
+                _buildTextField(
                   controller: _fruitQtyController,
-                  decoration: const InputDecoration(
-                      labelText: 'Fruit Quantity (Optional)',
-                      prefixIcon: Icon(Icons.numbers)),
+                  label: 'Fruit Quantity (Optional)',
+                  icon: Icons.numbers,
                   keyboardType: TextInputType.number,
                   validator: (v) {
                     if (v != null &&
@@ -213,11 +212,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
               const SizedBox(height: 24),
               _buildSectionHeader('Location'),
               const SizedBox(height: 8),
-              TextFormField(
+              _buildTextField(
                 controller: _locationController,
-                decoration: const InputDecoration(
-                    labelText: 'Shelf Location',
-                    prefixIcon: Icon(Icons.location_on_outlined)),
+                label: 'Shelf Location',
+                icon: Icons.location_on_outlined,
                 validator: (v) =>
                     Validators.required(v, error: 'Location is required'),
               ),
@@ -246,6 +244,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
             color: AppTheme.primaryColor,
             fontWeight: FontWeight.bold,
           ),
+    );
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+      ),
+      keyboardType: keyboardType,
+      validator: validator,
     );
   }
 }

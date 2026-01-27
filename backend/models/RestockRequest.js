@@ -16,6 +16,8 @@ const restockRequestSchema = mongoose.Schema({
         enum: ['pending', 'fulfilled'],
         default: 'pending',
     },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+    branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
 }, {
     timestamps: true,
 });

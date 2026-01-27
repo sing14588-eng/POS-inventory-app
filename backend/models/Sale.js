@@ -19,7 +19,10 @@ const saleSchema = mongoose.Schema({
         default: 'none'
     },
     refundReason: String,
-    creditSettled: { type: Boolean, default: true }, // Default true (cash), false if isCredit
+    creditSettled: { type: Boolean, default: true },
+    salesRep: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    company: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
+    branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
 }, {
     timestamps: true,
 });

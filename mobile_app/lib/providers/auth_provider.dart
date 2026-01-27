@@ -3,6 +3,7 @@ import 'package:pos_app/models/user_model.dart';
 import 'package:pos_app/services/api_service.dart';
 import 'package:pos_app/utils/constants.dart';
 import 'package:pos_app/services/storage_service.dart';
+import 'package:pos_app/models/company_model.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -14,21 +15,37 @@ class AuthProvider with ChangeNotifier {
   List<String> _roles = [];
   String? _name;
   String? _userId;
+  String? _companyId;
+  String? _companyName;
+  Company? _currentCompany;
+  String? _branchId;
+  String? _branchName;
+  bool _onboardingCompleted = false;
 
   // Getters
   bool get isAuthenticated => _isAuthenticated;
+  bool get onboardingCompleted => _onboardingCompleted;
   String? get role => _role;
   List<String> get roles => _roles;
   String? get name => _name;
+  Company? get currentCompany => _currentCompany;
+  String? get branchId => _branchId;
+  String? get branchName => _branchName;
 
   // Temporary User object for backward compatibility
   User? get user => _isAuthenticated
       ? User(
           id: _userId ?? '',
           name: _name ?? '',
-          email: '', // Email not always stored locally
+          email: '',
           role: _role ?? '',
+          roles: _roles,
           token: _token ?? '',
+          companyId: _companyId,
+          companyName: _companyName,
+          branchId: _branchId,
+          branchName: _branchName,
+          onboardingCompleted: _onboardingCompleted,
         )
       : null;
 
@@ -65,10 +82,32 @@ class AuthProvider with ChangeNotifier {
           if (_role != null) _roles = [_role!];
         }
 
+        // Handle company
+        if (response['company'] != null) {
+          _currentCompany = Company.fromJson(response['company']);
+          _companyId = _currentCompany!.id;
+          _companyName = _currentCompany!.name;
+          await _storage.saveCompanyId(_companyId!);
+          await _storage.saveCompanyName(_companyName!);
+        }
+
+        // Handle branch
+        if (response['branch'] != null) {
+          _branchId = response['branch']['_id'];
+          _branchName = response['branch']['name'];
+          // Storage might need updating too if we want auto-refetch
+        }
+
+        // Handle onboarding
+        _onboardingCompleted = response['onboardingCompleted'] ?? false;
+        if (response['user'] != null &&
+            response['user']['onboardingCompleted'] != null) {
+          _onboardingCompleted = response['user']['onboardingCompleted'];
+        }
+
         // Securely save data
         await _storage.saveToken(_token!);
         if (_role != null) await _storage.saveRole(_role!);
-        // Note: StorageService implementation might need saveUserId or we skip it if not present
         if (_userId != null) await _storage.saveUserId(_userId!);
 
         notifyListeners();
@@ -114,6 +153,34 @@ class AuthProvider with ChangeNotifier {
 
     await _storage.clearAll();
 
+    notifyListeners();
+  }
+
+  Future<bool> changePassword(String newPassword) async {
+    try {
+      await _apiService
+          .put('/users/change-password', {'newPassword': newPassword});
+      return true;
+    } catch (e) {
+      debugPrint("Change password error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> completeOnboarding() async {
+    try {
+      await _apiService.put('/users/onboarding-complete', {});
+      _onboardingCompleted = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint("Complete onboarding error: $e");
+      return false;
+    }
+  }
+
+  Future<void> resetOnboardingLocal() async {
+    _onboardingCompleted = false;
     notifyListeners();
   }
 }

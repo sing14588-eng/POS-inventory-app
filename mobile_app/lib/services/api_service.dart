@@ -16,7 +16,9 @@ class ApiService {
   Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
     final response = await http.post(
       Uri.parse('${Constants.baseUrl}$endpoint'),
-      headers: {'Content-Type': 'application/json'}, // Login doesn't need token usually, or handle separately
+      headers: {
+        'Content-Type': 'application/json'
+      }, // Login doesn't need token usually, or handle separately
       body: jsonEncode(body),
     );
     return _processResponse(response);
@@ -49,6 +51,22 @@ class ApiService {
       body: jsonEncode(body),
     );
     return _processResponse(response);
+  }
+
+  Future<String?> uploadImage(String filePath) async {
+    try {
+      final request = http.MultipartRequest(
+          'POST', Uri.parse('${Constants.baseUrl}/upload'));
+      request.files.add(await http.MultipartFile.fromPath('image', filePath));
+      final response = await request.send();
+      if (response.statusCode == 200) {
+        final resStr = await response.stream.bytesToString();
+        return '${Constants.baseUrl}$resStr';
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   dynamic _processResponse(http.Response response) {

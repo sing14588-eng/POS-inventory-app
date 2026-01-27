@@ -13,8 +13,15 @@ import 'package:pos_app/screens/admin_dashboard.dart';
 import 'package:pos_app/screens/user_management_screen.dart';
 import 'package:pos_app/screens/sales_history_screen.dart';
 import 'package:pos_app/screens/role_selection_screen.dart';
+import 'package:pos_app/screens/super_admin_dashboard.dart';
+import 'package:pos_app/screens/profile_screen.dart';
 import 'package:pos_app/services/offline_service.dart';
 import 'package:pos_app/services/error_service.dart';
+import 'package:pos_app/screens/professional/analytics_screen.dart';
+import 'package:pos_app/screens/professional/audit_logs_screen.dart';
+import 'package:pos_app/screens/professional/branch_mgmt_screen.dart';
+import 'package:pos_app/screens/professional/supplier_mgmt_screen.dart';
+import 'package:pos_app/screens/professional/notification_center.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,23 +43,42 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      scaffoldMessengerKey: ErrorService.scaffoldMessengerKey,
-      title: 'Inventory Management',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginScreen(),
-        '/sales': (context) => const SalesDashboard(),
-        '/picker': (context) => const PickerDashboard(),
-        '/accountant': (context) => const AccountantDashboard(),
-        '/warehouse': (context) => const WarehouseDashboard(),
-        '/admin': (context) => const AdminDashboard(),
-        '/admin/users': (context) => const UserManagementScreen(),
-        '/sales/history': (context) => const SalesHistoryScreen(),
-        '/role-selection': (context) => const RoleSelectionScreen(),
+    return Consumer<AuthProvider>(
+      builder: (context, auth, _) {
+        final company = auth.currentCompany;
+        final brandColor =
+            company != null ? AppTheme.hexToColor(company.primaryColor) : null;
+
+        return MaterialApp(
+          scaffoldMessengerKey: ErrorService.scaffoldMessengerKey,
+          title: company?.name ?? 'Inventory POS',
+          theme: brandColor != null
+              ? AppTheme.getBrandedTheme(brandColor, Brightness.light)
+              : AppTheme.lightTheme,
+          darkTheme: brandColor != null
+              ? AppTheme.getBrandedTheme(brandColor, Brightness.dark)
+              : AppTheme.darkTheme,
+          themeMode: ThemeMode.system,
+          initialRoute: '/',
+          routes: {
+            '/': (context) => const LoginScreen(),
+            '/sales': (context) => const SalesDashboard(),
+            '/picker': (context) => const PickerDashboard(),
+            '/accountant': (context) => const AccountantDashboard(),
+            '/warehouse': (context) => const WarehouseDashboard(),
+            '/admin': (context) => const AdminDashboard(),
+            '/admin/users': (context) => const UserManagementScreen(),
+            '/sales/history': (context) => const SalesHistoryScreen(),
+            '/role-selection': (context) => const RoleSelectionScreen(),
+            '/super-admin': (context) => const SuperAdminDashboard(),
+            '/profile': (context) => const ProfileScreen(),
+            '/analytics': (context) => const AnalyticsScreen(),
+            '/audit-logs': (context) => const AuditLogsScreen(),
+            '/branches': (context) => const BranchMgmtScreen(),
+            '/suppliers': (context) => const SupplierMgmtScreen(),
+            '/notifications': (context) => const NotificationCenter(),
+          },
+        );
       },
     );
   }

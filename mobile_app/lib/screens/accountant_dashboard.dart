@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:pos_app/providers/app_data_provider.dart';
 import 'package:pos_app/providers/auth_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:pos_app/widgets/professional_drawer.dart';
 
 class AccountantDashboard extends StatefulWidget {
   const AccountantDashboard({super.key});
@@ -24,21 +25,41 @@ class _AccountantDashboardState extends State<AccountantDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     final dataProvider = Provider.of<AppDataProvider>(context);
     final report = dataProvider.dailyReport;
     final today = DateFormat('MMM dd, yyyy').format(DateTime.now());
+    final currency = authProvider.currentCompany?.currencySymbol ?? '\$';
 
     return DefaultTabController(
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Financial Dashboard'),
+          leading: authProvider.currentCompany?.logoUrl.isNotEmpty == true
+              ? Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.network(authProvider.currentCompany!.logoUrl),
+                )
+              : null,
+          title: Text(authProvider.currentCompany?.name ?? 'Financials'),
           bottom: const TabBar(tabs: [
             Tab(text: 'Overview', icon: Icon(Icons.dashboard)),
             Tab(text: 'Debtors', icon: Icon(Icons.account_balance_wallet)),
             Tab(text: 'Refunds', icon: Icon(Icons.money_off)),
           ]),
           actions: [
+            Consumer<AppDataProvider>(
+              builder: (context, data, _) => IconButton(
+                icon: Badge(
+                  label: data.unreadNotifications > 0
+                      ? Text('${data.unreadNotifications}')
+                      : null,
+                  isLabelVisible: data.unreadNotifications > 0,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                onPressed: () => Navigator.pushNamed(context, '/notifications'),
+              ),
+            ),
             IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () {
@@ -49,16 +70,15 @@ class _AccountantDashboardState extends State<AccountantDashboard> {
                     provider.fetchRefundRequests();
                   }
                   provider.fetchPendingCreditSales();
+                  provider.fetchNotifications();
                 }),
             IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                Provider.of<AuthProvider>(context, listen: false).logout();
-                Navigator.pushReplacementNamed(context, '/');
-              },
+              icon: const Icon(Icons.person_outline),
+              onPressed: () => Navigator.pushNamed(context, '/profile'),
             )
           ],
         ),
+        drawer: const ProfessionalDrawer(),
         body: TabBarView(
           children: [
             // Tab 1: Overview
@@ -82,19 +102,19 @@ class _AccountantDashboardState extends State<AccountantDashboard> {
                             _buildSummaryCard(
                                 context,
                                 'Total Sales',
-                                '\$${report['totalSales']}',
+                                '$currency${report['totalSales']}',
                                 Icons.attach_money,
                                 Colors.blue),
                             _buildSummaryCard(
                                 context,
                                 'Total VAT',
-                                '\$${report['totalVAT']?.toStringAsFixed(2)}',
+                                '$currency${report['totalVAT']?.toStringAsFixed(2)}',
                                 Icons.pie_chart,
                                 Colors.purple),
                             _buildSummaryCard(
                                 context,
                                 'Credit Sales',
-                                '\$${report['creditSales']}',
+                                '$currency${report['creditSales']}',
                                 Icons.credit_card,
                                 Colors.orange),
                             _buildSummaryCard(

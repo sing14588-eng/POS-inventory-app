@@ -4,6 +4,7 @@ import 'package:pos_app/providers/app_data_provider.dart';
 import 'package:pos_app/providers/auth_provider.dart';
 import 'package:pos_app/screens/add_product_screen.dart';
 import 'package:pos_app/screens/barcode_scanner_screen.dart';
+import 'package:pos_app/services/sensory_service.dart';
 
 class WarehouseDashboard extends StatefulWidget {
   const WarehouseDashboard({super.key});
@@ -45,13 +46,20 @@ class _WarehouseDashboardState extends State<WarehouseDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
     final dataProvider = Provider.of<AppDataProvider>(context);
 
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Inventory Management'),
+          leading: authProvider.currentCompany?.logoUrl.isNotEmpty == true
+              ? Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Image.network(authProvider.currentCompany!.logoUrl),
+                )
+              : null,
+          title: Text(authProvider.currentCompany?.name ?? 'Inventory'),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Stock', icon: Icon(Icons.inventory)),
@@ -84,12 +92,21 @@ class _WarehouseDashboardState extends State<WarehouseDashboard> {
                 }
               },
             ),
+            Consumer<AppDataProvider>(
+              builder: (context, data, _) => IconButton(
+                icon: Badge(
+                  label: data.unreadNotifications > 0
+                      ? Text('${data.unreadNotifications}')
+                      : null,
+                  isLabelVisible: data.unreadNotifications > 0,
+                  child: const Icon(Icons.notifications_outlined),
+                ),
+                onPressed: () => Navigator.pushNamed(context, '/notifications'),
+              ),
+            ),
             IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: () {
-                Provider.of<AuthProvider>(context, listen: false).logout();
-                Navigator.pushReplacementNamed(context, '/');
-              },
+              icon: const Icon(Icons.person_outline),
+              onPressed: () => Navigator.pushNamed(context, '/profile'),
             )
           ],
         ),
@@ -310,9 +327,14 @@ class _WarehouseDashboardState extends State<WarehouseDashboard> {
                 if (context.mounted) {
                   Navigator.pop(context);
                   if (success) {
+                    SensoryService.playSuccess();
+                    SensoryService.successVibration();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                         content: Text('Stock updated successfully'),
                         backgroundColor: Colors.green));
+                  } else {
+                    SensoryService.playError();
+                    SensoryService.errorVibration();
                   }
                 }
               }

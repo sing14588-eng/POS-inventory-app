@@ -74,7 +74,10 @@ class Sale {
     this.refundStatus = 'none',
     this.refundReason,
     this.creditSettled = true,
+    this.branchId,
   });
+
+  final String? branchId;
 
   factory Sale.fromJson(Map<String, dynamic> json) {
     return Sale(
@@ -90,6 +93,7 @@ class Sale {
       refundReason: json['refundReason'],
       creditSettled:
           json['creditSettled'] ?? true, // Default to true if missing
+      branchId: json['branch'],
     );
   }
 }

@@ -1,5 +1,7 @@
 const Sale = require('../models/Sale');
 const Product = require('../models/Product');
+const { logAction } = require('../utils/auditLogger');
+const { sendNotification } = require('../utils/notificationService');
 
 // @desc    Create a new sale
 // @route   POST /api/sales
@@ -56,17 +58,38 @@ const createSale = async (req, res) => {
             vatAmount,
             isCredit,
             salesRep: req.user._id,
+            company: req.companyId,
+            branch: req.branchId,
             status: 'Pending', // Pending preparation
             isPrepared: false,
         });
 
         const createdSale = await sale.save();
 
-        // 3. Update Stock
+        await logAction(req, {
+            action: 'SALE_CREATED',
+            details: `New sale created. Total: ${grandTotal}`,
+            itemType: 'Sale',
+            itemId: createdSale._id
+        });
+
+        // 3. Update Stock & Check for Low Stock
         for (const item of processedItems) {
-            await Product.findByIdAndUpdate(item.product, {
+            const updatedProduct = await Product.findByIdAndUpdate(item.product, {
                 $inc: { currentStock: -item.quantity }
-            });
+            }, { new: true });
+
+            if (updatedProduct.currentStock < 10) {
+                await sendNotification({
+                    company: req.companyId,
+                    branch: req.branchId,
+                    roles: ['admin', 'warehouse'],
+                    title: 'Low Stock Tip',
+                    message: `${updatedProduct.name} is now down to ${updatedProduct.currentStock}`,
+                    type: 'WARNING',
+                    data: { productId: updatedProduct._id.toString() }
+                });
+            }
         }
 
         res.status(201).json(createdSale);
@@ -85,8 +108,8 @@ const getMySales = async (req, res) => {
         const limit = parseInt(req.query.limit) || 20;
         const skip = (page - 1) * limit;
 
-        const total = await Sale.countDocuments({ salesRep: req.user._id });
-        const sales = await Sale.find({ salesRep: req.user._id })
+        const total = await Sale.countDocuments({ salesRep: req.user._id, company: req.companyId });
+        const sales = await Sale.find({ salesRep: req.user._id, company: req.companyId })
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
@@ -113,6 +136,24 @@ const requestRefund = async (req, res) => {
         sale.refundStatus = 'requested';
         sale.refundReason = req.body.reason || 'Customer Return';
         await sale.save();
+
+        await logAction(req, {
+            action: 'REFUND_REQUESTED',
+            details: `Refund requested for sale ${sale._id}. Reason: ${sale.refundReason}`,
+            itemType: 'Sale',
+            itemId: sale._id
+        });
+
+        await sendNotification({
+            company: req.companyId,
+            branch: req.branchId,
+            roles: ['admin', 'accountant'],
+            title: 'Refund Request',
+            message: `A refund of ${sale.totalAmount} has been requested for sale #${sale._id.toString().slice(-6)}`,
+            type: 'INFO',
+            data: { saleId: sale._id.toString() }
+        });
+
         res.json(sale);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -144,7 +185,7 @@ const approveRefund = async (req, res) => {
 // @access  Private (Accountant, Admin)
 const getRefundRequests = async (req, res) => {
     try {
-        const sales = await Sale.find({ refundStatus: 'requested' })
+        const sales = await Sale.find({ refundStatus: 'requested', company: req.companyId })
             .sort({ updatedAt: -1 });
         res.json(sales);
     } catch (error) {
