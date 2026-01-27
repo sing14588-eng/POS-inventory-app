@@ -51,7 +51,7 @@ class MyApp extends StatelessWidget {
 
         return MaterialApp(
           scaffoldMessengerKey: ErrorService.scaffoldMessengerKey,
-          title: company?.name ?? 'Inventory POS',
+          title: company?.name ?? 'FlowPos',
           theme: brandColor != null
               ? AppTheme.getBrandedTheme(brandColor, Brightness.light)
               : AppTheme.lightTheme,
