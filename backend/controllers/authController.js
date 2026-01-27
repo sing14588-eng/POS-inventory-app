@@ -52,11 +52,11 @@ const seedUsers = async (req, res) => {
         });
 
         const users = [
-            { name: 'Sales User', email: 'sales@test.com', password: '123', roles: ['sales'], company: company._id },
-            { name: 'Warehouse User', email: 'ware@test.com', password: '123', roles: ['warehouse'], company: company._id },
-            { name: 'Accountant User', email: 'acc@test.com', password: '123', roles: ['accountant'], company: company._id },
-            { name: 'Admin User', email: 'admin@test.com', password: '123', roles: ['admin'], company: company._id },
-            { name: 'Super Admin', email: 'super@test.com', password: '123', roles: ['super_admin'] }, // No company for super admin
+            { name: 'Sales User', email: 'sales@test.com', password: '123456', roles: ['sales'], company: company._id },
+            { name: 'Warehouse User', email: 'ware@test.com', password: '123456', roles: ['warehouse'], company: company._id },
+            { name: 'Accountant User', email: 'acc@test.com', password: '123456', roles: ['accountant'], company: company._id },
+            { name: 'Admin User', email: 'admin@test.com', password: '123456', roles: ['admin'], company: company._id },
+            { name: 'Super Admin', email: 'super@test.com', password: '123456', roles: ['super_admin'] }, // No company for super admin
         ];
 
         for (const user of users) {
