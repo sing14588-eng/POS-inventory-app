@@ -14,43 +14,65 @@ class ApiService {
   }
 
   Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
-    final response = await http.post(
-      Uri.parse('${Constants.baseUrl}$endpoint'),
-      headers: {
-        'Content-Type': 'application/json'
-      }, // Login doesn't need token usually, or handle separately
-      body: jsonEncode(body),
-    );
-    return _processResponse(response);
+    try {
+      final response = await http
+          .post(
+            Uri.parse('${Constants.baseUrl}$endpoint'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _processResponse(response);
+    } catch (e) {
+      throw Exception('Connection Error: $e');
+    }
   }
 
   Future<dynamic> postAuth(String endpoint, Map<String, dynamic> body) async {
-    final headers = await _getHeaders();
-    final response = await http.post(
-      Uri.parse('${Constants.baseUrl}$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
-    return _processResponse(response);
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .post(
+            Uri.parse('${Constants.baseUrl}$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _processResponse(response);
+    } catch (e) {
+      throw Exception('Connection Error: $e');
+    }
   }
 
   Future<dynamic> get(String endpoint) async {
-    final headers = await _getHeaders();
-    final response = await http.get(
-      Uri.parse('${Constants.baseUrl}$endpoint'),
-      headers: headers,
-    );
-    return _processResponse(response);
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .get(
+            Uri.parse('${Constants.baseUrl}$endpoint'),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 15));
+      return _processResponse(response);
+    } catch (e) {
+      throw Exception('Connection Error: $e');
+    }
   }
 
   Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
-    final headers = await _getHeaders();
-    final response = await http.put(
-      Uri.parse('${Constants.baseUrl}$endpoint'),
-      headers: headers,
-      body: jsonEncode(body),
-    );
-    return _processResponse(response);
+    try {
+      final headers = await _getHeaders();
+      final response = await http
+          .put(
+            Uri.parse('${Constants.baseUrl}$endpoint'),
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 15));
+      return _processResponse(response);
+    } catch (e) {
+      throw Exception('Connection Error: $e');
+    }
   }
 
   Future<String?> uploadImage(String filePath) async {
@@ -58,7 +80,8 @@ class ApiService {
       final request = http.MultipartRequest(
           'POST', Uri.parse('${Constants.baseUrl}/upload'));
       request.files.add(await http.MultipartFile.fromPath('image', filePath));
-      final response = await request.send();
+      final response =
+          await request.send().timeout(const Duration(seconds: 30));
       if (response.statusCode == 200) {
         final resStr = await response.stream.bytesToString();
         return '${Constants.baseUrl}$resStr';
@@ -73,7 +96,12 @@ class ApiService {
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Error: ${response.statusCode} - ${response.body}');
+      String message = 'API Error ${response.statusCode}';
+      try {
+        final body = jsonDecode(response.body);
+        if (body['message'] != null) message = body['message'];
+      } catch (_) {}
+      throw Exception(message);
     }
   }
 }

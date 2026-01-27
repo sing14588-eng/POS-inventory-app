@@ -49,8 +49,14 @@ class AuthProvider with ChangeNotifier {
         )
       : null;
 
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
   Future<bool> login(String email, String password) async {
     try {
+      _errorMessage = null;
+      notifyListeners();
+
       final url = '${Constants.baseUrl}/auth/login';
       debugPrint('Attempting login to: $url with email: $email');
 
@@ -60,29 +66,25 @@ class AuthProvider with ChangeNotifier {
       });
 
       if (response != null && response['token'] != null) {
+        // ... (rest of success logic)
         _token = response['token'];
         _isAuthenticated = true;
         _name = response['name'];
 
-        // Handle User ID
         if (response['user'] != null && response['user']['id'] != null) {
           _userId = response['user']['id'];
         } else if (response['id'] != null) {
           _userId = response['id'];
         }
 
-        // Handle roles array
         if (response['roles'] != null) {
           _roles = List<String>.from(response['roles']);
-          // Default to first role or null if empty
           _role = _roles.isNotEmpty ? _roles.first : null;
         } else {
-          // Fallback for old backend/data
           _role = response['role'];
           if (_role != null) _roles = [_role!];
         }
 
-        // Handle company
         if (response['company'] != null) {
           _currentCompany = Company.fromJson(response['company']);
           _companyId = _currentCompany!.id;
@@ -91,21 +93,17 @@ class AuthProvider with ChangeNotifier {
           await _storage.saveCompanyName(_companyName!);
         }
 
-        // Handle branch
         if (response['branch'] != null) {
           _branchId = response['branch']['_id'];
           _branchName = response['branch']['name'];
-          // Storage might need updating too if we want auto-refetch
         }
 
-        // Handle onboarding
         _onboardingCompleted = response['onboardingCompleted'] ?? false;
         if (response['user'] != null &&
             response['user']['onboardingCompleted'] != null) {
           _onboardingCompleted = response['user']['onboardingCompleted'];
         }
 
-        // Securely save data
         await _storage.saveToken(_token!);
         if (_role != null) await _storage.saveRole(_role!);
         if (_userId != null) await _storage.saveUserId(_userId!);
@@ -113,9 +111,13 @@ class AuthProvider with ChangeNotifier {
         notifyListeners();
         return true;
       }
+      _errorMessage = 'Invalid response from server';
+      notifyListeners();
       return false;
     } catch (e) {
       debugPrint('Login error: $e');
+      _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+      notifyListeners();
       return false;
     }
   }
