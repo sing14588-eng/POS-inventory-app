@@ -6,19 +6,21 @@ const userSchema = mongoose.Schema({
     username: { type: String, unique: true, sparse: true }, // For code-based login
     email: { type: String, unique: true, sparse: true }, // sparse allows multiple nulls
     password: { type: String, required: true },
-    roles: [{
-        type: String,
+    roles: {
+        type: [String],
         required: true,
-        enum: ['sales', 'picker', 'accountant', 'warehouse', 'admin', 'super_admin']
-    }],
+        enum: ['super_admin', 'shop_admin', 'branch_manager', 'sales', 'picker', 'accountant', 'warehouse'],
+        default: ['sales']
+    },
     company: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Company',
-        required: false // Optional for super_admins or during migration
+        required: false
     },
     branch: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Branch'
+        ref: 'Branch',
+        required: false
     },
     isActive: { type: Boolean, default: true },
     passwordChanged: { type: Boolean, default: true },

@@ -300,9 +300,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   void _showCreateCompanyDialog() {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
-    final currencyController = TextEditingController(text: '\$');
-    String plan = 'basic';
-    Color pickedColor = const Color(0xFF6C63FF);
+    Color primaryColor = const Color(0xFF6C63FF);
+    Color secondaryColor = const Color(0xFF4B4B4B);
     String? logoUrl;
     bool isUploading = false;
 
@@ -334,11 +333,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         await picker.pickImage(source: ImageSource.gallery);
                     if (image != null) {
                       setDialogState(() => isUploading = true);
-                      final url = await ApiService().uploadImage(image.path);
-                      setDialogState(() {
-                        logoUrl = url;
-                        isUploading = false;
-                      });
+                      try {
+                        final url = await ApiService().uploadImage(image.path);
+                        setDialogState(() {
+                          logoUrl = url;
+                          isUploading = false;
+                        });
+                      } catch (e) {
+                        setDialogState(() => isUploading = false);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(e.toString()),
+                          backgroundColor: Colors.red,
+                        ));
+                      }
                     }
                   },
                   child: Container(
@@ -348,7 +356,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                       color: Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.grey[300]!),
-                      image: logoUrl != null
+                      image: (logoUrl != null && logoUrl!.startsWith('http'))
                           ? DecorationImage(
                               image: NetworkImage(logoUrl!),
                               fit: BoxFit.contain)
@@ -356,7 +364,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                     ),
                     child: isUploading
                         ? const Center(child: CircularProgressIndicator())
-                        : logoUrl == null
+                        : (logoUrl == null || !logoUrl!.startsWith('http'))
                             ? const Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -368,48 +376,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                             : null,
                   ),
                 ),
-                const SizedBox(height: 20),
-                const Text('Brand Color *',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Pick Brand Color'),
-                        content: SingleChildScrollView(
-                          child: ColorPicker(
-                            pickerColor: pickedColor,
-                            onColorChanged: (color) => pickedColor = color,
-                          ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              setDialogState(() {});
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Select'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: Container(
-                    height: 50,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: pickedColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Center(
-                        child: Text('Tap to change color',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold))),
-                  ),
-                ),
                 const SizedBox(height: 12),
                 TextField(
                   onChanged: (v) => setDialogState(() => logoUrl = v),
@@ -419,20 +385,39 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                TextField(
-                  controller: currencyController,
-                  decoration:
-                      const InputDecoration(labelText: 'Currency Symbol *'),
+                const Divider(),
+                const Text('Brand Colors',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildColorPreview(
+                        'Primary',
+                        primaryColor,
+                        (color) => setDialogState(() => primaryColor = color),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildColorPreview(
+                        'Secondary',
+                        secondaryColor,
+                        (color) => setDialogState(() => secondaryColor = color),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                DropdownButton<String>(
-                  value: plan,
-                  isExpanded: true,
-                  items: ['basic', 'premium', 'enterprise']
-                      .map((e) => DropdownMenuItem(
-                          value: e, child: Text(e.toUpperCase())))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => plan = v!),
+                const SizedBox(height: 12),
+                const ListTile(
+                  leading: Icon(Icons.payments_rounded, color: Colors.green),
+                  title: Text('Currency Defaulted to: Birr'),
+                  subtitle: Text('Ethiopia (ETB)'),
+                ),
+                const ListTile(
+                  leading:
+                      Icon(Icons.verified_user_rounded, color: Colors.blue),
+                  title: Text('Standard MVP Plan'),
                 ),
               ],
             ),
@@ -458,11 +443,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                         .createCompany({
                   'name': nameController.text,
                   'email': emailController.text,
-                  'plan': plan,
                   'logoUrl': logoUrl,
                   'primaryColor':
-                      '#${pickedColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
-                  'currencySymbol': currencyController.text,
+                      '#${primaryColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
+                  'secondaryColor':
+                      '#${secondaryColor.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}',
                 });
 
                 if (response != null && context.mounted) {
@@ -470,11 +455,50 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
                   _showCredentialsDialog(response['teamCredentials']);
                 }
               },
-              child: const Text('Create'),
+              child: const Text('Create Shop'),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildColorPreview(String label, Color color, Function(Color) onPick) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12)),
+        const SizedBox(height: 4),
+        GestureDetector(
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: Text('Pick $label Color'),
+                content: SingleChildScrollView(
+                  child: ColorPicker(
+                    pickerColor: color,
+                    onColorChanged: onPick,
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            );
+          },
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

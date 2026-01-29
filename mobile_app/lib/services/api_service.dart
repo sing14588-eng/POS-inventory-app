@@ -28,7 +28,7 @@ class ApiService {
       return _processResponse(response);
     } catch (e) {
       debugPrint('ApiService ERROR on $url: $e');
-      throw Exception('Connection Error: $e');
+      throw e.toString().replaceFirst('Exception: ', '');
     }
   }
 
@@ -48,7 +48,7 @@ class ApiService {
       return _processResponse(response);
     } catch (e) {
       debugPrint('ApiService ERROR on $url: $e');
-      throw Exception('Connection Error: $e');
+      throw e.toString().replaceFirst('Exception: ', '');
     }
   }
 
@@ -67,7 +67,7 @@ class ApiService {
       return _processResponse(response);
     } catch (e) {
       debugPrint('ApiService ERROR on $url: $e');
-      throw Exception('Connection Error: $e');
+      throw e.toString().replaceFirst('Exception: ', '');
     }
   }
 
@@ -122,7 +122,7 @@ class ApiService {
         final body = jsonDecode(response.body);
         if (body['message'] != null) message = body['message'];
       } catch (_) {}
-      throw Exception(message);
+      throw message;
     }
   }
 }

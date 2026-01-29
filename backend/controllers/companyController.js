@@ -1,5 +1,8 @@
 const { sendEmail } = require('../utils/emailService');
 const { credentialsTemplate } = require('../utils/emailTemplates');
+const Company = require('../models/Company');
+const User = require('../models/User');
+const Branch = require('../models/Branch');
 
 // @desc    Get all companies
 // @route   GET /api/companies
@@ -62,14 +65,14 @@ const createCompany = async (req, res) => {
         const company = await Company.create({
             name,
             email,
-            plan,
+            plan: 'standard', // Default for MVP
             shopId,
-            address,
-            phone,
-            logoUrl,
-            primaryColor,
-            secondaryColor,
-            currencySymbol
+            address: address || '',
+            phone: phone || '',
+            logoUrl: logoUrl || '',
+            primaryColor: primaryColor || '#000000',
+            secondaryColor: secondaryColor || '#000000',
+            currencySymbol: 'Birr' // Default for user
         });
 
         // 2. Create Default Branch (Main Headquarters)
@@ -288,9 +291,10 @@ const resetCompanyAdminPassword = async (req, res) => {
 
 module.exports = {
     getCompanies,
-    getCompany,
+    getCompanies,
     createCompany,
     updateCompany,
+    updateOwnCompany,
     getGlobalStats,
     updateCompanyStatus,
     resetCompanyAdminPassword

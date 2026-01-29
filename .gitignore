@@ -4,6 +4,7 @@ backend/.env
 backend/npm-debug.log*
 backend/yarn-debug.log*
 backend/yarn-error.log*
+backend/uploads/
 
 # Mobile App
 mobile_app/.dart_tool/

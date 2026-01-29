@@ -22,15 +22,25 @@ import 'package:pos_app/screens/audit_logs_screen.dart';
 import 'package:pos_app/screens/professional/branch_mgmt_screen.dart';
 import 'package:pos_app/screens/professional/supplier_mgmt_screen.dart';
 import 'package:pos_app/screens/professional/notification_center.dart';
+import 'package:pos_app/screens/shop_admin/shop_admin_dashboard.dart';
+import 'package:pos_app/screens/shop_admin/branch_management_screen.dart';
+import 'package:pos_app/screens/shop_admin/product_management_screen.dart';
+import 'package:pos_app/screens/shop_admin/staff_management_screen.dart';
+import 'package:pos_app/screens/shop_admin/staff_edit_screen.dart';
+import 'package:pos_app/screens/shop_admin/reports_screen.dart';
+import 'package:pos_app/screens/shop_admin/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await OfflineService().init();
 
+  final auth = AuthProvider();
+  await auth.tryAutoLogin();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider.value(value: auth),
         ChangeNotifierProvider(create: (_) => AppDataProvider()),
       ],
       child: const MyApp(),
@@ -77,6 +87,15 @@ class MyApp extends StatelessWidget {
             '/branches': (context) => const BranchMgmtScreen(),
             '/suppliers': (context) => const SupplierMgmtScreen(),
             '/notifications': (context) => const NotificationCenter(),
+            '/shop-admin': (context) => const ShopAdminDashboard(),
+            '/shop-admin/branches': (context) => const BranchManagementScreen(),
+            '/shop-admin/products': (context) =>
+                const ProductManagementScreen(),
+            '/shop-admin/staff': (context) => const StaffManagementScreen(),
+            '/shop-admin/staff/add': (context) => const StaffEditScreen(),
+            '/reports': (context) => const ReportsScreen(),
+            '/shop-admin/settings': (context) =>
+                const ShopAdminSettingsScreen(),
           },
         );
       },

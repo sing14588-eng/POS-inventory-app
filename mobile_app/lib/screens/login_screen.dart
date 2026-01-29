@@ -12,6 +12,21 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.isAuthenticated) {
+        if (auth.roles.length > 1) {
+          Navigator.pushReplacementNamed(context, '/role-selection');
+        } else {
+          Navigator.pushReplacementNamed(context, auth.getDashboardRoute());
+        }
+      }
+    });
+  }
+
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -31,9 +46,14 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        final route = authProvider.getDashboardRoute();
-        debugPrint('Navigating to dashboard: $route');
-        Navigator.pushReplacementNamed(context, route);
+        if (authProvider.roles.length > 1) {
+          debugPrint('Multi-role user detected. Navigating to role selection.');
+          Navigator.pushReplacementNamed(context, '/role-selection');
+        } else {
+          final route = authProvider.getDashboardRoute();
+          debugPrint('Navigating to dashboard: $route');
+          Navigator.pushReplacementNamed(context, route);
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

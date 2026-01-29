@@ -7,8 +7,12 @@ const getUsers = async (req, res) => {
     try {
         let query = { company: req.companyId };
 
+        if (req.query.branch) {
+            query.branch = req.query.branch;
+        }
+
         // Super Admin sees all
-        if (req.user.roles.includes('super_admin')) {
+        if (req.user.role === 'super_admin') {
             query = {};
         }
 
@@ -19,14 +23,12 @@ const getUsers = async (req, res) => {
     }
 };
 
-// @desc    Create new user
-// @route   POST /api/users
-// @access  Private (Admin)
 const createUser = async (req, res) => {
-    const { name, email, password, roles } = req.body;
+    const { name, email, username, password, roles, branch } = req.body;
 
     try {
-        const userExists = await User.findOne({ email });
+        // Check if user already exists by email OR username
+        const userExists = await User.findOne({ $or: [{ email: email || 'never' }, { username: username || 'never' }] });
         if (userExists) {
             return res.status(400).json({ message: 'User already exists' });
         }
@@ -34,9 +36,12 @@ const createUser = async (req, res) => {
         const user = await User.create({
             name,
             email,
+            username,
             password,
-            roles: roles || ['sales'], // Default to sales if not provided
-            company: req.companyId
+            roles: (roles && roles.length > 0) ? roles : ['sales'], // Default to sales if empty
+            branch,
+            company: req.companyId,
+            passwordChanged: false // Force change on first login as per spec
         });
 
         if (user) {
@@ -44,7 +49,11 @@ const createUser = async (req, res) => {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
-                roles: user.roles,
+                username: user.username,
+                roles: user.roles, // Return roles array
+                branch: user.branch,
+                // Include password in response for creating staff (shown once)
+                password: password
             });
         } else {
             res.status(400).json({ message: 'Invalid user data' });
@@ -54,9 +63,6 @@ const createUser = async (req, res) => {
     }
 };
 
-// @desc    Update user (active status, roles, password reset)
-// @route   PUT /api/users/:id
-// @access  Private (Admin)
 const updateUser = async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
@@ -64,12 +70,14 @@ const updateUser = async (req, res) => {
         if (user) {
             user.name = req.body.name || user.name;
             user.email = req.body.email || user.email;
-            if (req.body.roles) user.roles = req.body.roles;
+            user.username = req.body.username || user.username;
+            if (req.body.roles) user.roles = req.body.roles; // Update roles array
+            if (req.body.branch !== undefined) user.branch = req.body.branch;
             if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
 
-            // Password reset if provided
             if (req.body.password) {
                 user.password = req.body.password;
+                user.passwordChanged = false;
             }
 
             const updatedUser = await user.save();
@@ -78,7 +86,9 @@ const updateUser = async (req, res) => {
                 _id: updatedUser._id,
                 name: updatedUser.name,
                 email: updatedUser.email,
+                username: updatedUser.username,
                 roles: updatedUser.roles,
+                branch: updatedUser.branch,
                 isActive: updatedUser.isActive,
             });
         } else {
@@ -89,17 +99,14 @@ const updateUser = async (req, res) => {
     }
 };
 
-// @desc    Change own password
-// @route   PUT /api/users/change-password
-// @access  Private
 const changePassword = async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
-
         const user = await User.findById(req.user._id);
 
         if (user && (await user.matchPassword(currentPassword))) {
             user.password = newPassword;
+            user.passwordChanged = true;
             await user.save();
             res.json({ message: 'Password changed successfully' });
         } else {
@@ -118,20 +125,20 @@ const resetUserPassword = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Authorization check: Admin can only reset their company users
-        if (!req.user.roles.includes('super_admin') && user.company.toString() !== req.companyId.toString()) {
+        if (req.user.role !== 'super_admin' && user.company.toString() !== req.companyId.toString()) {
             return res.status(403).json({ message: 'Not authorized to reset this user' });
         }
 
-        const tempPassword = 'reset123';
+        const tempPassword = 'reset' + Math.floor(Math.random() * 899 + 100);
         user.password = tempPassword;
-        user.passwordChanged = false; // Force change on next login
+        user.passwordChanged = false;
         await user.save();
 
         res.json({
             message: 'Password reset successful',
             newPassword: tempPassword,
-            email: user.email
+            email: user.email,
+            username: user.username
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -3,8 +3,8 @@ const Company = require('../models/Company');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
 
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, {
+const generateToken = (id, activeRole) => {
+    return jwt.sign({ id, activeRole }, process.env.JWT_SECRET, {
         expiresIn: '30d',
     });
 };
@@ -78,6 +78,8 @@ const loginUser = async (req, res) => {
             const populatedUser = await User.findById(user._id).populate('company').populate('branch');
 
             console.log(`[Auth] Login successful: ${email}`);
+            const defaultRole = user.roles && user.roles.length > 0 ? user.roles[0] : (user.role || 'sales');
+
             res.json({
                 _id: user._id,
                 name: user.name,
@@ -86,7 +88,7 @@ const loginUser = async (req, res) => {
                 company: populatedUser.company ? populatedUser.company : null,
                 branch: populatedUser.branch ? populatedUser.branch : null,
                 passwordChanged: user.passwordChanged,
-                token: generateToken(user._id),
+                token: generateToken(user._id, defaultRole),
                 onboardingCompleted: user.onboardingCompleted
             });
         } else {
@@ -156,4 +158,28 @@ const seedUsers = async (req, res) => {
     }
 };
 
-module.exports = { loginUser, seedUsers, getMe };
+// @desc    Switch active role context
+// @route   POST /api/auth/switch-role
+// @access  Private
+const switchRole = async (req, res) => {
+    const { targetRole } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.roles.includes(targetRole) && user.role !== targetRole) {
+        return res.status(403).json({ message: 'User does not have this role' });
+    }
+
+    const newToken = generateToken(user._id, targetRole);
+
+    res.json({
+        message: `Switched to ${targetRole}`,
+        token: newToken,
+        activeRole: targetRole
+    });
+};
+
+module.exports = { loginUser, seedUsers, getMe, switchRole };

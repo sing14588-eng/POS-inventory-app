@@ -1,121 +1,189 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pos_app/providers/auth_provider.dart';
-import 'package:pos_app/utils/app_theme.dart';
-import 'package:pos_app/widgets/glass_container.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
-class RoleSelectionScreen extends StatelessWidget {
+class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
 
   @override
+  State<RoleSelectionScreen> createState() => _RoleSelectionScreenState();
+}
+
+class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
+  bool _isLoading = false;
+
+  void _handleRoleSelect(AuthProvider authProvider, String role) async {
+    setState(() => _isLoading = true);
+
+    final success = await authProvider.switchRole(role);
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (success) {
+      String route = '/';
+      switch (role) {
+        case 'super_admin':
+          route = '/super-admin';
+          break;
+        case 'shop_admin':
+          route = '/shop-admin';
+          break;
+        case 'branch_manager':
+          route = '/shop-admin';
+          break;
+        case 'sales':
+          route = '/sales';
+          break;
+        case 'picker':
+          route = '/picker';
+          break;
+        case 'warehouse':
+          route = '/warehouse';
+          break;
+        case 'accountant':
+          route = '/accountant';
+          break;
+      }
+      Navigator.pushNamedAndRemoveUntil(context, route, (route) => false);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Failed to switch workspace. Please try again.')),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    // ... same build logic ...
     final authProvider = Provider.of<AuthProvider>(context);
     final roles = authProvider.roles;
 
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Select Your Role'),
+        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Welcome Back! 👋',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'You have multiple roles assigned.\nPlease select the workspace you want to enter.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(height: 32),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: roles.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final role = roles[index];
+                        return _buildRoleCard(context, role, authProvider);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildRoleCard(
+      BuildContext context, String role, AuthProvider authProvider) {
+    IconData icon;
+    Color color;
+
+    switch (role) {
+      case 'sales':
+        icon = Icons.point_of_sale;
+        color = Colors.blue;
+        break;
+      case 'branch_manager':
+        icon = Icons.store;
+        color = Colors.purple;
+        break;
+      case 'warehouse':
+        icon = Icons.inventory;
+        color = Colors.brown;
+        break;
+      case 'picker':
+        icon = Icons.shopping_bag;
+        color = Colors.orange;
+        break;
+      case 'accountant':
+        icon = Icons.account_balance;
+        color = Colors.teal;
+        break;
+      case 'shop_admin':
+        icon = Icons.admin_panel_settings;
+        color = Colors.indigo;
+        break;
+      case 'super_admin':
+        icon = Icons.verified_user;
+        color = Colors.red;
+        break;
+      default:
+        icon = Icons.badge;
+        color = Colors.grey;
+    }
+
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => _handleRoleSelect(authProvider, role),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Row(
             children: [
-              const Icon(Icons.security, size: 80, color: AppTheme.primaryColor)
-                  .animate()
-                  .fadeIn()
-                  .scale(),
-              const SizedBox(height: 32),
-              Text(
-                'Welcome, ${authProvider.name}',
-                style: Theme.of(context).textTheme.headlineSmall,
-                textAlign: TextAlign.center,
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 32),
               ),
-              const SizedBox(height: 8),
-              const Text('Select your workspace',
-                  style: TextStyle(color: Colors.grey)),
-              const SizedBox(height: 48),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                alignment: WrapAlignment.center,
-                children: roles.map((role) {
-                  return GestureDetector(
-                    onTap: () {
-                      authProvider.setCurrentRole(role);
-                      Navigator.pushReplacementNamed(context, '/$role');
-                    },
-                    child: GlassContainer(
-                        width: 150,
-                        height: 150,
-                        color: Colors.white,
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(_getRoleIcon(role),
-                                size: 40, color: _getRoleColor(role)),
-                            const SizedBox(height: 12),
-                            Text(
-                              role.toUpperCase(),
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: _getRoleColor(role)),
-                            )
-                          ],
-                        )),
-                  ).animate().scale(duration: 400.ms, curve: Curves.easeOut);
-                }).toList(),
+              const SizedBox(width: 24),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      role.toUpperCase().replaceAll('_', ' '),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Access ${role.replaceAll('_', ' ')} workspace',
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 48),
-              TextButton(
-                onPressed: () {
-                  authProvider.logout();
-                  Navigator.pushReplacementNamed(context, '/');
-                },
-                child: const Text('Logout'),
-              )
+              const Icon(Icons.chevron_right_rounded, color: Colors.grey),
             ],
           ),
         ),
       ),
     );
-  }
-
-  IconData _getRoleIcon(String role) {
-    switch (role) {
-      case 'admin':
-        return Icons.admin_panel_settings;
-      case 'sales':
-        return Icons.point_of_sale;
-      case 'warehouse':
-        return Icons.inventory;
-      case 'picker':
-        return Icons.local_shipping;
-      case 'accountant':
-        return Icons.account_balance;
-      case 'super_admin':
-        return Icons.admin_panel_settings_rounded;
-      default:
-        return Icons.person;
-    }
-  }
-
-  Color _getRoleColor(String role) {
-    switch (role) {
-      case 'admin':
-        return Colors.redAccent;
-      case 'sales':
-        return Colors.blue;
-      case 'warehouse':
-        return Colors.orange;
-      case 'picker':
-        return Colors.green;
-      case 'accountant':
-        return Colors.purple;
-      case 'super_admin':
-        return Colors.amber[900]!;
-      default:
-        return Colors.grey;
-    }
   }
 }

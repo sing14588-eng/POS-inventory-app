@@ -35,6 +35,31 @@ class AuthProvider with ChangeNotifier {
   String? get branchId => _branchId;
   String? get branchName => _branchName;
 
+  Future<bool> switchRole(String newRole) async {
+    try {
+      if (!_roles.contains(newRole)) return false;
+
+      final response = await _apiService.post('/auth/switch-role', {
+        'targetRole': newRole,
+      });
+
+      if (response != null && response['token'] != null) {
+        _token = response['token'];
+        _role = newRole;
+
+        await _storage.saveToken(_token!);
+        await _storage.saveRole(_role!);
+
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Switch role error: $e');
+      return false;
+    }
+  }
+
   // Temporary User object for backward compatibility
   User? get user => _isAuthenticated
       ? User(
@@ -83,10 +108,13 @@ class AuthProvider with ChangeNotifier {
 
         if (response['roles'] != null) {
           _roles = List<String>.from(response['roles']);
-          _role = _roles.isNotEmpty ? _roles.first : null;
-        } else {
+          // Default to first role if not already set or invalid
+          if (_role == null || !_roles.contains(_role)) {
+            _role = _roles.isNotEmpty ? _roles.first : null;
+          }
+        } else if (response['role'] != null) {
           _role = response['role'];
-          if (_role != null) _roles = [_role!];
+          _roles = [_role!];
         }
 
         if (response['company'] != null) {
@@ -128,7 +156,7 @@ class AuthProvider with ChangeNotifier {
       return false;
     } catch (e) {
       debugPrint('Login error: $e');
-      _errorMessage = e.toString().replaceAll('Exception:', '').trim();
+      _errorMessage = e.toString().replaceFirst('Exception: ', '').trim();
       notifyListeners();
       return false;
     }
@@ -222,7 +250,7 @@ class AuthProvider with ChangeNotifier {
 
   String getDashboardRoute() {
     if (_role == 'super_admin') return '/super-admin';
-    if (_role == 'admin') return '/admin';
+    if (_role == 'shop_admin' || _role == 'admin') return '/shop-admin';
     if (_role == 'picker') return '/picker';
     if (_role == 'accountant') return '/accountant';
     if (_role == 'warehouse') return '/warehouse';

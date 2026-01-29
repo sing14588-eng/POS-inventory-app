@@ -16,6 +16,7 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             req.user = await User.findById(decoded.id).select('-password');
+            req.activeRole = decoded.activeRole; // Attach active role from token
 
             if (!req.user) {
                 console.log(`[AuthMW] User NOT FOUND for token`);
@@ -45,19 +46,18 @@ const protect = async (req, res, next) => {
 
 const authorize = (...requiredRoles) => {
     return (req, res, next) => {
-        if (!req.user || !req.user.roles) {
-            return res.status(403).json({ message: 'Access denied' });
-        }
-
-        // Super Admin bypass
-        if (req.user.roles.includes('super_admin')) {
+        // Bypass for Super Admin (checks actual user roles, not just active context)
+        if (req.user && req.user.roles && req.user.roles.includes('super_admin')) {
             return next();
         }
 
-        const hasRole = req.user.roles.some(role => requiredRoles.includes(role));
-        if (!hasRole) {
+        if (!req.activeRole) {
+            return res.status(403).json({ message: 'No active role context found' });
+        }
+
+        if (!requiredRoles.includes(req.activeRole)) {
             return res.status(403).json({
-                message: `Your roles are not authorized to access this route`
+                message: `Your active role (${req.activeRole}) is not authorized. Required: ${requiredRoles.join(', ')}`
             });
         }
         next();

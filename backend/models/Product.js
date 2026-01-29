@@ -7,6 +7,13 @@ const productSchema = mongoose.Schema({
     fruitQuantity: { type: Number, default: 0 }, // If applicable
     unitType: { type: String, required: true, enum: ['PIECE', 'WEIGHT'] },
     currentStock: { type: Number, required: true, default: 0 },
+    minStockLevel: { type: Number, default: 5 },
+    branchStocks: [
+        {
+            branch: { type: mongoose.Schema.Types.ObjectId, ref: 'Branch' },
+            quantity: { type: Number, default: 0 }
+        }
+    ],
     shelfLocation: { type: String, required: true }, // e.g., A-1
     price: { type: Number, required: true, default: 0 }, // Added price for POS calculation
     barcode: { type: String, unique: true, sparse: true },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pos_app/models/product_model.dart';
+import 'package:pos_app/models/user_model.dart';
 import 'package:pos_app/models/sale_model.dart';
 import 'package:pos_app/models/company_model.dart';
 import 'package:pos_app/services/api_service.dart';
@@ -58,6 +59,50 @@ class AppDataProvider with ChangeNotifier {
 
   int _unreadNotifications = 0;
   int get unreadNotifications => _unreadNotifications;
+
+  Map<String, dynamic>? _shopAdminStats;
+  Map<String, dynamic>? get shopAdminStats => _shopAdminStats;
+
+  List<User> _staff = [];
+  List<User> get staff => _staff;
+
+  Future<void> fetchStaff({String? branchId}) async {
+    try {
+      final queryParams = branchId != null ? '?branch=$branchId' : '';
+      final data = await _apiService.get('/users$queryParams');
+      if (data != null) {
+        _staff = (data as List).map((u) => User.fromJson(u)).toList();
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Fetch staff error: $e");
+    }
+  }
+
+  Future<Map<String, dynamic>?> createUser(
+      Map<String, dynamic> userData) async {
+    try {
+      final response = await _apiService.post('/users', userData);
+      if (response != null) {
+        await fetchStaff(); // Refresh list
+        return response;
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Create user error: $e");
+      return null;
+    }
+  }
+
+  Future<void> fetchShopAdminDashboard() async {
+    try {
+      final data = await _apiService.get('/reports/admin-stats');
+      _shopAdminStats = data;
+      notifyListeners();
+    } catch (e) {
+      debugPrint("Fetch admin stats error: $e");
+    }
+  }
 
   // Pagination state
   int _productPage = 1;
@@ -528,6 +573,21 @@ class AppDataProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint("Fetch notifications error: $e");
+    }
+  }
+
+  Future<bool> updateUserStatus(String id, bool isActive) async {
+    try {
+      final response =
+          await _apiService.put('/users/$id', {'isActive': isActive});
+      if (response != null) {
+        await fetchStaff();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint("Update user status error: $e");
+      return false;
     }
   }
 
