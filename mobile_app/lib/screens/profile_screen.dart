@@ -80,11 +80,13 @@ class ProfileScreen extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: () async {
-                  await Provider.of<AuthProvider>(context, listen: false)
-                      .resetOnboardingLocal();
+                  final auth =
+                      Provider.of<AuthProvider>(context, listen: false);
+                  await auth.resetOnboardingLocal();
                   if (context.mounted) {
+                    final route = auth.getDashboardRoute();
                     Navigator.pushNamedAndRemoveUntil(
-                        context, '/sales', (route) => false);
+                        context, route, (route) => false);
                   }
                 },
                 icon: const Icon(Icons.play_circle_outline),

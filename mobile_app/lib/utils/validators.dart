@@ -6,6 +6,18 @@ class Validators {
     return null;
   }
 
+  static String? identity(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Identity is required';
+    }
+    // Allow either email format OR username code format (3+ characters)
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value) && value.trim().length < 3) {
+      return 'Please enter a valid email or username code';
+    }
+    return null;
+  }
+
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Email is required';

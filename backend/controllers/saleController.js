@@ -193,4 +193,52 @@ const getRefundRequests = async (req, res) => {
     }
 };
 
-module.exports = { createSale, getMySales, requestRefund, approveRefund, getRefundRequests };
+// @desc    Get all pending credit sales
+// @route   GET /api/sales/credit/pending
+// @access  Private (Accountant, Admin)
+const getPendingCreditSales = async (req, res) => {
+    try {
+        const sales = await Sale.find({
+            isCredit: true,
+            creditSettled: false,
+            company: req.companyId
+        }).sort({ createdAt: -1 });
+        res.json(sales);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// @desc    Settle a credit sale
+// @route   PUT /api/sales/:id/settle
+// @access  Private (Accountant, Admin)
+const settleCreditSale = async (req, res) => {
+    try {
+        const sale = await Sale.findById(req.params.id);
+        if (!sale) return res.status(404).json({ message: 'Sale not found' });
+
+        sale.creditSettled = true;
+        await sale.save();
+
+        await logAction(req, {
+            action: 'CREDIT_SETTLED',
+            details: `Credit sale #${sale._id.toString().slice(-6)} settled.`,
+            itemType: 'Sale',
+            itemId: sale._id
+        });
+
+        res.json(sale);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+module.exports = {
+    createSale,
+    getMySales,
+    requestRefund,
+    approveRefund,
+    getRefundRequests,
+    getPendingCreditSales,
+    settleCreditSale
+};

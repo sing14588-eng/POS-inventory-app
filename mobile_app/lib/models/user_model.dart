@@ -20,11 +20,13 @@ class User {
     this.branchId,
     this.branchName,
     this.onboardingCompleted = false,
+    this.passwordChanged = true,
   });
 
   final String? branchId;
   final String? branchName;
   final bool onboardingCompleted;
+  final bool passwordChanged;
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
@@ -52,6 +54,7 @@ class User {
           ? json['branch']['name']
           : null,
       onboardingCompleted: json['onboardingCompleted'] ?? false,
+      passwordChanged: json['passwordChanged'] ?? true,
     );
   }
 }

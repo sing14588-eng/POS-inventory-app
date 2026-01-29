@@ -14,6 +14,7 @@ class AuthProvider with ChangeNotifier {
   String? _role;
   List<String> _roles = [];
   String? _name;
+  String? _email;
   String? _userId;
   String? _companyId;
   String? _companyName;
@@ -21,10 +22,12 @@ class AuthProvider with ChangeNotifier {
   String? _branchId;
   String? _branchName;
   bool _onboardingCompleted = false;
+  bool _passwordChanged = true;
 
   // Getters
   bool get isAuthenticated => _isAuthenticated;
   bool get onboardingCompleted => _onboardingCompleted;
+  bool get passwordChanged => _passwordChanged;
   String? get role => _role;
   List<String> get roles => _roles;
   String? get name => _name;
@@ -37,7 +40,7 @@ class AuthProvider with ChangeNotifier {
       ? User(
           id: _userId ?? '',
           name: _name ?? '',
-          email: '',
+          email: _email ?? '',
           role: _role ?? '',
           roles: _roles,
           token: _token ?? '',
@@ -46,6 +49,7 @@ class AuthProvider with ChangeNotifier {
           branchId: _branchId,
           branchName: _branchName,
           onboardingCompleted: _onboardingCompleted,
+          passwordChanged: _passwordChanged,
         )
       : null;
 
@@ -99,9 +103,17 @@ class AuthProvider with ChangeNotifier {
         }
 
         _onboardingCompleted = response['onboardingCompleted'] ?? false;
-        if (response['user'] != null &&
-            response['user']['onboardingCompleted'] != null) {
-          _onboardingCompleted = response['user']['onboardingCompleted'];
+        _passwordChanged = response['passwordChanged'] ?? true;
+        _email = response['email'];
+
+        if (response['user'] != null) {
+          _email ??= response['user']['email'];
+          if (response['user']['onboardingCompleted'] != null) {
+            _onboardingCompleted = response['user']['onboardingCompleted'];
+          }
+          if (response['user']['passwordChanged'] != null) {
+            _passwordChanged = response['user']['passwordChanged'];
+          }
         }
 
         await _storage.saveToken(_token!);
@@ -145,6 +157,27 @@ class AuthProvider with ChangeNotifier {
     return true;
   }
 
+  Future<void> refreshUserData() async {
+    try {
+      final response = await _apiService.get('/auth/me');
+      if (response != null) {
+        if (response['company'] != null) {
+          _currentCompany = Company.fromJson(response['company']);
+        }
+        if (response['branch'] != null) {
+          _branchId = response['branch']['_id'];
+          _branchName = response['branch']['name'];
+        }
+        _name = response['name'];
+        _email = response['email'];
+        _roles = List<String>.from(response['roles'] ?? []);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Refresh user data error: $e');
+    }
+  }
+
   Future<void> logout() async {
     _isAuthenticated = false;
     _token = null;
@@ -152,6 +185,7 @@ class AuthProvider with ChangeNotifier {
     _userId = null;
     _roles = [];
     _name = null;
+    _email = null;
 
     await _storage.clearAll();
 
@@ -184,5 +218,14 @@ class AuthProvider with ChangeNotifier {
   Future<void> resetOnboardingLocal() async {
     _onboardingCompleted = false;
     notifyListeners();
+  }
+
+  String getDashboardRoute() {
+    if (_role == 'super_admin') return '/super-admin';
+    if (_role == 'admin') return '/admin';
+    if (_role == 'picker') return '/picker';
+    if (_role == 'accountant') return '/accountant';
+    if (_role == 'warehouse') return '/warehouse';
+    return '/sales'; // Default
   }
 }

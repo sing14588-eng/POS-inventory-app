@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pos_app/providers/app_data_provider.dart';
@@ -14,6 +13,8 @@ import 'package:pos_app/services/receipt_service.dart';
 import 'package:pos_app/services/sensory_service.dart';
 import 'package:pos_app/services/onboarding_service.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'package:pos_app/widgets/security_notice.dart';
+import 'package:pos_app/widgets/professional_drawer.dart';
 
 class SalesDashboard extends StatefulWidget {
   const SalesDashboard({super.key});
@@ -126,16 +127,17 @@ class _SalesDashboardState extends State<SalesDashboard> {
       content: "Stay updated on low stock alerts and restock requests.",
     ));
 
-    OnboardingService.showTour(
-      context,
+    TutorialCoachMark(
       targets: targets,
-      onFinish: () {
-        Provider.of<AuthProvider>(context, listen: false).completeOnboarding();
-      },
+      colorShadow: Colors.blueGrey[900]!,
+      textSkip: "SKIP",
+      onFinish: () => Provider.of<AuthProvider>(context, listen: false)
+          .completeOnboarding(),
       onSkip: () {
         Provider.of<AuthProvider>(context, listen: false).completeOnboarding();
+        return true;
       },
-    );
+    ).show(context: context);
   }
 
   void _onScroll() {
@@ -382,7 +384,7 @@ class _SalesDashboardState extends State<SalesDashboard> {
                             const Spacer(),
                             Switch(
                               value: _isCredit,
-                              activeThumbColor: AppTheme.primaryColor,
+                              activeTrackColor: AppTheme.primaryColor,
                               onChanged: (v) {
                                 setState(() => _isCredit = v);
                                 setSheetState(() {});
@@ -543,26 +545,25 @@ class _SalesDashboardState extends State<SalesDashboard> {
     final dataProvider = Provider.of<AppDataProvider>(context);
     final authProvider = Provider.of<AuthProvider>(context);
     final products = dataProvider.products;
+    final company = authProvider.currentCompany;
+    final brandColor = company != null
+        ? AppTheme.hexToColor(company.primaryColor)
+        : AppTheme.primaryColor;
 
     return Scaffold(
+      drawer: const ProfessionalDrawer(),
       body: Stack(
         children: [
-          // Background Gradient decoration
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    blurRadius: 100,
-                    spreadRadius: 50,
-                  )
+          // Dynamic Branded Background
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+                colors: [
+                  brandColor.withValues(alpha: 0.08),
+                  const Color(0xFFF8FAFC),
+                  const Color(0xFFF1F5F9),
                 ],
               ),
             ),
@@ -574,130 +575,86 @@ class _SalesDashboardState extends State<SalesDashboard> {
               controller: _scrollController,
               slivers: [
                 SliverAppBar(
-                  expandedHeight: 120,
+                  expandedHeight: 140,
                   floating: true,
                   pinned: true,
-                  backgroundColor:
-                      Colors.transparent, // Let body logic handle bg
-                  leading:
-                      authProvider.currentCompany?.logoUrl.isNotEmpty == true
-                          ? Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Image.network(
-                                  authProvider.currentCompany!.logoUrl),
-                            )
-                          : null,
-                  title: Text(
-                      authProvider.currentCompany?.name ?? 'Sales Point',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold)),
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  leading: company?.logoUrl.isNotEmpty == true
+                      ? Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Hero(
+                            tag: 'companyLogo',
+                            child: Image.network(company!.logoUrl,
+                                fit: BoxFit.contain),
+                          ),
+                        )
+                      : const Icon(Icons.bolt_rounded, color: Colors.amber),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(company?.name ?? 'Sales Point',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Colors.black87)),
+                      Text('FRONTLINE CONSOLE',
+                          style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                              color: brandColor.withValues(alpha: 0.7))),
+                    ],
+                  ),
                   centerTitle: false,
                   actions: [
-                    StreamBuilder<List<ConnectivityResult>>(
-                      stream: Connectivity().onConnectivityChanged,
-                      builder: (context, snapshot) {
-                        final isOffline = snapshot.data != null &&
-                            snapshot.data!.contains(ConnectivityResult.none);
-                        if (!isOffline) return const SizedBox.shrink();
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Icon(Icons.wifi_off, color: Colors.red),
-                        );
-                      },
-                    ),
+                    _buildOfflineIndicator(),
                     IconButton(
                       key: _historyKey,
-                      icon: const Icon(Icons.history,
-                          color: AppTheme.primaryColor),
+                      icon: Icon(Icons.receipt_long_rounded, color: brandColor),
                       onPressed: () =>
                           Navigator.pushNamed(context, '/sales/history'),
                     ),
-                    Consumer<AppDataProvider>(
-                      builder: (context, data, _) => IconButton(
-                        key: _notificationsKey,
-                        icon: Badge(
-                          label: data.unreadNotifications > 0
-                              ? Text('${data.unreadNotifications}')
-                              : null,
-                          isLabelVisible: data.unreadNotifications > 0,
-                          child: const Icon(Icons.notifications_outlined),
-                        ),
-                        onPressed: () =>
-                            Navigator.pushNamed(context, '/notifications'),
-                      ),
-                    ),
+                    _buildNotificationBadge(dataProvider),
                     IconButton(
                       key: _profileKey,
-                      icon: const Icon(Icons.person_outline),
+                      icon: const Icon(Icons.person_outline_rounded,
+                          color: Colors.black87),
                       onPressed: () => Navigator.pushNamed(context, '/profile'),
                     ),
+                    const SizedBox(width: 8),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
-                    background: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        color: Theme.of(context)
-                            .scaffoldBackgroundColor
-                            .withValues(alpha: 0.8),
-                        alignment: Alignment.bottomCenter,
-                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-                        child: TextField(
-                          key: _searchKey,
-                          decoration: InputDecoration(
-                            hintText: 'Search products...',
-                            prefixIcon: const Icon(Icons.search),
-                            filled: true,
-                            fillColor: Colors.grey.withValues(alpha: 0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding:
-                                const EdgeInsets.symmetric(horizontal: 16),
-                            suffixIcon: IconButton(
-                              key: _scanKey,
-                              icon: const Icon(Icons.qr_code_scanner),
-                              onPressed: () async {
-                                final code = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const BarcodeScannerScreen(),
-                                  ),
-                                );
-                                if (code != null && context.mounted) {
-                                  final product = await dataProvider
-                                      .getProductByBarcode(code);
-                                  if (!context.mounted) return;
-                                  if (product != null) {
-                                    _addToCart(product);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          content: Text(
-                                              'Added ${product.name} to cart'),
-                                          backgroundColor: Colors.green),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('Product not found'),
-                                          backgroundColor: Colors.red),
-                                    );
-                                  }
-                                }
-                              },
-                            ),
-                          ),
-                          onChanged: (value) {
-                            dataProvider.searchProducts(value);
-                          },
-                        ),
-                      ),
+                    background: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 15),
+                      alignment: Alignment.bottomCenter,
+                      child: _buildSearchBar(dataProvider, brandColor),
                     ),
                   ),
                 ),
+
+                const SliverToBoxAdapter(child: SecurityNotice()),
+
+                // Personal Performance Snapshot (Modern Bento Tool)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+                    child:
+                        _buildPersonalImpactSnapshot(dataProvider, brandColor),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(24, 24, 24, 12),
+                    child: Text('Available Inventory',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.blueGrey,
+                            letterSpacing: 1)),
+                  ),
+                ),
+                const SliverToBoxAdapter(child: SecurityNotice()),
 
                 if (products.isEmpty)
                   const SliverFillRemaining(
@@ -756,147 +713,286 @@ class _SalesDashboardState extends State<SalesDashboard> {
     );
   }
 
+  Widget _buildOfflineIndicator() {
+    return StreamBuilder<List<ConnectivityResult>>(
+      stream: Connectivity().onConnectivityChanged,
+      builder: (context, snapshot) {
+        final isOffline = snapshot.data != null &&
+            snapshot.data!.contains(ConnectivityResult.none);
+        if (!isOffline) return const SizedBox.shrink();
+        return const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8.0),
+          child: Icon(Icons.wifi_off_rounded, color: Colors.redAccent),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationBadge(AppDataProvider data) {
+    return IconButton(
+      key: _notificationsKey,
+      icon: Badge(
+        label: data.unreadNotifications > 0
+            ? Text('${data.unreadNotifications}')
+            : null,
+        isLabelVisible: data.unreadNotifications > 0,
+        backgroundColor: Colors.redAccent,
+        child:
+            const Icon(Icons.notifications_none_rounded, color: Colors.black87),
+      ),
+      onPressed: () => Navigator.pushNamed(context, '/notifications'),
+    );
+  }
+
+  Widget _buildSearchBar(AppDataProvider dataProvider, Color brandColor) {
+    return GlassContainer(
+      blur: 10,
+      opacity: 0.1,
+      borderRadius: BorderRadius.circular(20),
+      child: TextField(
+        key: _searchKey,
+        decoration: InputDecoration(
+          hintText: 'Search products...',
+          hintStyle: TextStyle(color: Colors.blueGrey[400], fontSize: 14),
+          prefixIcon: Icon(Icons.search_rounded, color: brandColor),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(20),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          suffixIcon: IconButton(
+            key: _scanKey,
+            icon: Icon(Icons.qr_code_scanner_rounded, color: brandColor),
+            onPressed: () => _handleBarcodeScan(dataProvider),
+          ),
+        ),
+        onChanged: (value) => dataProvider.searchProducts(value),
+      ),
+    );
+  }
+
+  Future<void> _handleBarcodeScan(AppDataProvider dataProvider) async {
+    final code = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const BarcodeScannerScreen()),
+    );
+    if (code != null && mounted) {
+      final product = await dataProvider.getProductByBarcode(code);
+      if (!mounted) return;
+      if (product != null) {
+        _addToCart(product);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added ${product.name} to cart'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Product not found'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildPersonalImpactSnapshot(AppDataProvider data, Color brandColor) {
+    // Note: In a real app, this would be filtered for the CURRENT user
+    final report = data.dailyReport;
+    final totalSales = report?['totalSales'] ?? 0.0;
+    final txCount = report?['transactionCount'] ?? 0;
+    final currency = Provider.of<AuthProvider>(context, listen: false)
+            .currentCompany
+            ?.currencySymbol ??
+        '\$';
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: brandColor.withValues(alpha: 0.06),
+            blurRadius: 30,
+            offset: const Offset(0, 15),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildImpactItem('Daily Sales', '$currency$totalSales',
+              Icons.auto_graph_rounded, brandColor),
+          Container(height: 40, width: 1, color: Colors.grey[100]),
+          _buildImpactItem('Transactions', '$txCount',
+              Icons.shopping_bag_outlined, Colors.blueGrey),
+        ],
+      ),
+    ).animate().fadeIn().slideY(begin: 0.1);
+  }
+
+  Widget _buildImpactItem(
+      String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: -0.5)),
+              Text(label,
+                  style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProductCard(Product product, int qty) {
     final isOutOfStock = product.currentStock <= 0;
+    final company =
+        Provider.of<AuthProvider>(context, listen: false).currentCompany;
+    final brandColor = company != null
+        ? AppTheme.hexToColor(company.primaryColor)
+        : AppTheme.primaryColor;
 
     return GestureDetector(
       onTap: isOutOfStock ? null : () => _addToCart(product),
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                )
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Container(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            )
+          ],
+        ),
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: isOutOfStock
-                          ? Colors.grey[100]
-                          : AppTheme.primaryColor.withValues(alpha: 0.05),
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(24)),
+                          ? Colors.grey[50]
+                          : brandColor.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(20),
                     ),
+                    height: double.infinity,
+                    width: double.infinity,
                     child: Center(
                       child: Icon(
-                        isOutOfStock
-                            ? Icons.production_quantity_limits
-                            : Icons.inventory_2,
-                        size: 48,
-                        color:
-                            isOutOfStock ? Colors.grey : AppTheme.primaryColor,
-                      )
-                          .animate(target: isOutOfStock ? 0 : 1)
-                          .scale(duration: 300.ms),
+                        _getProductIcon(product.category),
+                        size: 40,
+                        color: isOutOfStock
+                            ? Colors.grey[300]
+                            : brandColor.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(product.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16)),
-                            Text(product.category,
-                                style: TextStyle(
-                                    color: Colors.grey[500], fontSize: 12)),
-                          ],
+                  if (qty > 0)
+                    Positioned(
+                      top: 15,
+                      right: 15,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: brandColor,
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('\$${product.price}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w900, fontSize: 18)),
-                            if (isOutOfStock)
-                              InkWell(
-                                onTap: () async {
-                                  // Request restock
-                                  final success =
-                                      await Provider.of<AppDataProvider>(
-                                              context,
-                                              listen: false)
-                                          .createRestockRequest(product.id);
-
-                                  if (success && mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                          content: Text('Restock requested!'),
-                                          backgroundColor: Colors.blue),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                      color: Colors.blue.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8)),
-                                  child: const Text('Notify Warehouse',
-                                      style: TextStyle(
-                                          color: Colors.blue,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                )
-              ],
+                        child: Text('$qty',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12)),
+                      ),
+                    ).animate().scale(),
+                ],
+              ),
             ),
-          ),
-          if (qty > 0)
-            Positioned(
-              top: 12,
-              right: 12,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                    color: AppTheme.secondaryColor,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                          color: AppTheme.secondaryColor.withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4))
-                    ]),
-                child: Text('$qty',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12)),
-              ).animate().scale(curve: Curves.elasticOut),
-            )
-        ],
-      )
-          .animate()
-          .fadeIn()
-          .slideY(begin: 0.1, end: 0, curve: Curves.easeOutQuad),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(product.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('${company?.currencySymbol ?? '\$'}${product.price}',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: brandColor,
+                              fontSize: 16)),
+                      Text('${product.currentStock} left',
+                          style: TextStyle(
+                              color:
+                                  isOutOfStock ? Colors.red : Colors.grey[400],
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
+
+  IconData _getProductIcon(String? category) {
+    category = category?.toLowerCase();
+    if (category == null) {
+      return Icons.inventory_2_rounded;
+    }
+    if (category.contains('drink') || category.contains('beverage')) {
+      return Icons.local_cafe_rounded;
+    }
+    if (category.contains('food') || category.contains('snack')) {
+      return Icons.fastfood_rounded;
+    }
+    if (category.contains('electronic')) {
+      return Icons.devices_rounded;
+    }
+    if (category.contains('cloth')) {
+      return Icons.checkroom_rounded;
+    }
+    return Icons.inventory_2_rounded;
   }
 }

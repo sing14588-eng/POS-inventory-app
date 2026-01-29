@@ -89,13 +89,62 @@ const updateUser = async (req, res) => {
     }
 };
 
+// @desc    Change own password
+// @route   PUT /api/users/change-password
+// @access  Private
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+
+        const user = await User.findById(req.user._id);
+
+        if (user && (await user.matchPassword(currentPassword))) {
+            user.password = newPassword;
+            await user.save();
+            res.json({ message: 'Password changed successfully' });
+        } else {
+            res.status(401).json({ message: 'Invalid current password' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+const resetUserPassword = async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Authorization check: Admin can only reset their company users
+        if (!req.user.roles.includes('super_admin') && user.company.toString() !== req.companyId.toString()) {
+            return res.status(403).json({ message: 'Not authorized to reset this user' });
+        }
+
+        const tempPassword = 'reset123';
+        user.password = tempPassword;
+        user.passwordChanged = false; // Force change on next login
+        await user.save();
+
+        res.json({
+            message: 'Password reset successful',
+            newPassword: tempPassword,
+            email: user.email
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
 const completeOnboarding = async (req, res) => {
     try {
         const user = await User.findById(req.user._id);
         if (user) {
             user.onboardingCompleted = true;
             await user.save();
-            res.json({ message: 'Onboarding marked as complete' });
+            res.json({ message: 'Onboarding marked as completed' });
         } else {
             res.status(404).json({ message: 'User not found' });
         }
@@ -104,4 +153,4 @@ const completeOnboarding = async (req, res) => {
     }
 };
 
-module.exports = { getUsers, createUser, updateUser, changePassword, completeOnboarding };
+module.exports = { getUsers, createUser, updateUser, changePassword, resetUserPassword, completeOnboarding };

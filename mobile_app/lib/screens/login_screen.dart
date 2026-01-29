@@ -31,21 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) {
       setState(() => _isLoading = false);
       if (success) {
-        final role = authProvider.role;
-        debugPrint('User role received: $role');
-        if (role == 'sales') {
-          Navigator.pushReplacementNamed(context, '/sales');
-        } else if (role == 'picker') {
-          Navigator.pushReplacementNamed(context, '/picker');
-        } else if (role == 'accountant') {
-          Navigator.pushReplacementNamed(context, '/accountant');
-        } else if (role == 'warehouse') {
-          Navigator.pushReplacementNamed(context, '/warehouse');
-        } else if (role == 'admin') {
-          Navigator.pushReplacementNamed(context, '/admin');
-        } else if (role == 'super_admin') {
-          Navigator.pushReplacementNamed(context, '/super-admin');
-        }
+        final route = authProvider.getDashboardRoute();
+        debugPrint('Navigating to dashboard: $route');
+        Navigator.pushReplacementNamed(context, route);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -104,11 +92,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _emailController,
                           decoration: const InputDecoration(
-                            labelText: 'Email',
-                            prefixIcon: Icon(Icons.email_outlined),
+                            labelText: 'Email or Username Code',
+                            hintText: 'e.g. ADM-FLOW-1234',
+                            prefixIcon: Icon(Icons.badge_outlined),
                           ),
-                          keyboardType: TextInputType.emailAddress,
-                          validator: Validators.email,
+                          keyboardType: TextInputType.text,
+                          validator: Validators.identity,
                         ),
                         const SizedBox(height: 20),
                         TextFormField(

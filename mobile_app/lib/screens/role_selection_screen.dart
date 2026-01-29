@@ -93,6 +93,8 @@ class RoleSelectionScreen extends StatelessWidget {
         return Icons.local_shipping;
       case 'accountant':
         return Icons.account_balance;
+      case 'super_admin':
+        return Icons.admin_panel_settings_rounded;
       default:
         return Icons.person;
     }
@@ -110,6 +112,8 @@ class RoleSelectionScreen extends StatelessWidget {
         return Colors.green;
       case 'accountant':
         return Colors.purple;
+      case 'super_admin':
+        return Colors.amber[900]!;
       default:
         return Colors.grey;
     }

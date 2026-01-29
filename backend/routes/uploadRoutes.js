@@ -16,14 +16,15 @@ const storage = multer.diskStorage({
 });
 
 function checkFileType(file, cb) {
-    const filetypes = /jpg|jpeg|png/;
+    const filetypes = /jpg|jpeg|png|webp/;
     const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
+    const mimetype = filetypes.test(file.mimetype) || file.mimetype === 'application/octet-stream';
 
     if (extname && mimetype) {
         return cb(null, true);
     } else {
-        cb('Images only!');
+        console.log(`[Upload] Rejected file: ext=${path.extname(file.originalname)}, mime=${file.mimetype}`);
+        cb(new Error('Images only (jpg, jpeg, png, webp)!'));
     }
 }
 
@@ -35,7 +36,10 @@ const upload = multer({
 });
 
 router.post('/', upload.single('image'), (req, res) => {
-    res.send(`/${req.file.path}`);
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    res.send(`/${req.file.path.replace(/\\/g, '/')}`); // Use forward slashes for URLs
 });
 
 module.exports = router;

@@ -14,10 +14,18 @@ const seedAdmin = async () => {
             name: 'Admin User',
             email: 'admin@test.com',
             password: '123456',
-            role: 'admin'
+            roles: ['admin'] // Changed to roles array
+        });
+
+        const superAdmin = await User.create({
+            name: 'Super Admin',
+            email: 'singsongadisu@gmail.com',
+            password: '123456',
+            roles: ['super_admin']
         });
 
         console.log('Admin User Created:', adminUser.email);
+        console.log('Super Admin Created:', superAdmin.email);
         process.exit();
     } catch (error) {
         console.error('Error seeding admin:', error);

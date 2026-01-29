@@ -5,7 +5,7 @@ class GlassContainer extends StatelessWidget {
   final Widget child;
   final double blur;
   final double opacity;
-  final Color color;
+  final Color? color;
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
@@ -18,7 +18,7 @@ class GlassContainer extends StatelessWidget {
     required this.child,
     this.blur = 10.0,
     this.opacity = 0.1,
-    this.color = Colors.white,
+    this.color,
     this.borderRadius,
     this.padding,
     this.margin,
@@ -29,6 +29,12 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = color ?? (isDark ? Colors.black : Colors.white);
+    final effectiveBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.white.withValues(alpha: 0.2);
+
     return Container(
       margin: margin,
       child: ClipRRect(
@@ -40,10 +46,9 @@ class GlassContainer extends StatelessWidget {
             height: height,
             padding: padding,
             decoration: BoxDecoration(
-              color: color.withValues(alpha: opacity),
+              color: effectiveColor.withValues(alpha: opacity),
               borderRadius: borderRadius ?? BorderRadius.circular(16),
-              border: border ??
-                  Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              border: border ?? Border.all(color: effectiveBorderColor),
             ),
             child: child,
           ),

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createSale, getMySales, requestRefund, approveRefund, getPendingCreditSales, settleCreditSale } = require('../controllers/saleController');
+const { createSale, getMySales, requestRefund, approveRefund, getRefundRequests, getPendingCreditSales, settleCreditSale } = require('../controllers/saleController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 
 router.get('/my-sales', protect, getMySales);

@@ -395,14 +395,15 @@ class AppDataProvider with ChangeNotifier {
     }
   }
 
-  Future<bool> createCompany(Map<String, dynamic> companyData) async {
+  Future<Map<String, dynamic>?> createCompany(
+      Map<String, dynamic> companyData) async {
     try {
-      await _apiService.postAuth('/companies', companyData);
+      final response = await _apiService.postAuth('/companies', companyData);
       await fetchCompanies();
-      return true;
+      return response;
     } catch (e) {
       debugPrint("Create company error: $e");
-      return false;
+      return null;
     }
   }
 
@@ -417,12 +418,38 @@ class AppDataProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateCompanyStatus(String id, bool isActive) async {
+  Future<bool> updateOwnCompany(Map<String, dynamic> body) async {
     try {
-      await _apiService.put('/companies/$id', {'isActive': isActive});
-      await fetchCompanies();
+      await _apiService.put('/companies/me', body);
+      // Success will return the updated company object
+      ErrorService.showSuccess("Shop identity updated successfully");
+      return true;
     } catch (e) {
-      debugPrint("Update company error: $e");
+      debugPrint("Update own company error: $e");
+      ErrorService.showError("Failed to update branding: $e");
+      return false;
+    }
+  }
+
+  Future<bool> updateCompanyStatus(String id, bool isActive) async {
+    try {
+      await _apiService.put('/companies/$id/status', {'isActive': isActive});
+      await fetchCompanies();
+      await fetchGlobalStats();
+      return true;
+    } catch (e) {
+      debugPrint("Update status error: $e");
+      return false;
+    }
+  }
+
+  Future<bool> resetAdminPassword(String id) async {
+    try {
+      await _apiService.put('/companies/$id/reset-password', {});
+      return true;
+    } catch (e) {
+      debugPrint("Reset password error: $e");
+      return false;
     }
   }
 
@@ -444,6 +471,19 @@ class AppDataProvider with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint("Fetch analytics error: $e");
+    }
+  }
+
+  Future<Map<String, dynamic>?> resetUserPassword(String userId) async {
+    try {
+      final data = await _apiService.put('/users/$userId/reset-password', {});
+      ErrorService.showSuccess(
+          "Password reset successfully. Please share the credentials.");
+      return data;
+    } catch (e) {
+      debugPrint("Reset password error: $e");
+      ErrorService.showError("Failed to reset password: $e");
+      return null;
     }
   }
 

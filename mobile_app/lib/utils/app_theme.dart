@@ -33,7 +33,10 @@ class AppTheme {
         surface: Colors.white,
         error: accentColor,
       ),
-      textTheme: _buildTextTheme(base),
+      textTheme: _buildTextTheme(base).apply(
+        bodyColor: Colors.black87,
+        displayColor: Colors.black,
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

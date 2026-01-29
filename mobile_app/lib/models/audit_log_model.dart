@@ -2,18 +2,20 @@ class AuditLog {
   final String id;
   final String userName;
   final String? branchName;
+  final String? companyName;
   final String action;
-  final String? details;
+  final String? description;
   final String? itemType;
   final String? itemId;
-  final String createdAt;
+  final DateTime createdAt;
 
   AuditLog({
     required this.id,
     required this.userName,
     this.branchName,
+    this.companyName,
     required this.action,
-    this.details,
+    this.description,
     this.itemType,
     this.itemId,
     required this.createdAt,
@@ -28,11 +30,14 @@ class AuditLog {
       branchName: json['branch'] != null && json['branch'] is Map
           ? json['branch']['name']
           : null,
+      companyName: json['company'] != null && json['company'] is Map
+          ? json['company']['name']
+          : null,
       action: json['action'],
-      details: json['details'],
+      description: json['description'] ?? json['details'],
       itemType: json['itemType'],
       itemId: json['itemId'],
-      createdAt: json['createdAt'],
+      createdAt: DateTime.parse(json['createdAt']),
     );
   }
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:pos_app/services/api_service.dart';
+import 'package:pos_app/providers/app_data_provider.dart';
 import 'package:pos_app/widgets/glass_container.dart';
 import 'package:pos_app/utils/app_theme.dart';
 import 'package:pos_app/utils/validators.dart';
@@ -108,6 +111,88 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             .showSnackBar(SnackBar(content: Text('Error updating status: $e')));
       }
     }
+  }
+
+  Future<void> _resetPassword(String userId, String userName) async {
+    final provider = Provider.of<AppDataProvider>(context, listen: false);
+    final response = await provider.resetUserPassword(userId);
+
+    if (response != null && mounted) {
+      _showCredentialsDialog(
+          response['email'], response['newPassword'], userName);
+    }
+  }
+
+  void _showCredentialsDialog(String email, String password, String name) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Reset Password for $name'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('New temporary credentials generated:',
+                style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 20),
+            _buildCredentialItem('Email', email),
+            const SizedBox(height: 12),
+            _buildCredentialItem('New Password', password),
+            const SizedBox(height: 20),
+            const Text(
+              'User will be asked to change this password on next login.',
+              style: TextStyle(
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.orange),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCredentialItem(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(value,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy_rounded, size: 20),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: value));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('$label copied to clipboard')),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -237,7 +322,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user['email']),
+                              Text(user['email'] ??
+                                  user['username'] ??
+                                  'No Identity'),
                               const SizedBox(height: 4),
                               Wrap(
                                   spacing: 4,
@@ -259,13 +346,31 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                       .toList())
                             ],
                           ),
-                          trailing: Switch(
-                            value: isActive,
-                            onChanged: (val) =>
-                                _toggleUserStatus(user['_id'], isActive),
-                            activeThumbColor: Colors.green,
-                            inactiveThumbColor: Colors.red,
-                            activeTrackColor: Colors.green[200],
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.password_rounded,
+                                    color: Colors.orange),
+                                tooltip: 'Reset Password',
+                                onPressed: () =>
+                                    _resetPassword(user['_id'], user['name']),
+                              ),
+                              Switch(
+                                value: isActive,
+                                onChanged: (val) =>
+                                    _toggleUserStatus(user['_id'], isActive),
+                                thumbColor:
+                                    WidgetStateProperty.resolveWith<Color>(
+                                        (states) {
+                                  if (states.contains(WidgetState.selected)) {
+                                    return Colors.green;
+                                  }
+                                  return Colors.red;
+                                }),
+                                activeTrackColor: Colors.green[200],
+                              ),
+                            ],
                           ),
                         ),
                       );

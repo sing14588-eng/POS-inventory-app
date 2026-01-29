@@ -18,6 +18,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Request logger middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.url}`);
+    next();
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/sales', saleRoutes);
@@ -37,15 +43,24 @@ app.get('/', (req, res) => {
 
 const path = require('path');
 const fs = require('fs');
+
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir);
 }
 
 app.use('/api/upload', require('./routes/uploadRoutes'));
-app.use('/uploads', express.static(path.join(__dirname, '/uploads')));
+app.use('/uploads', express.static(uploadsDir));
 
-const PORT = process.env.PORT || 5000;
+// Error Handling Middleware
+app.use((err, req, res, next) => {
+    console.error(`[Global Error Handler] ${err.stack || err}`);
+    res.status(err.status || 500).json({
+        message: err.message || 'Something went wrong on the server!'
+    });
+});
+
+const PORT = process.env.PORT || 5050;
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

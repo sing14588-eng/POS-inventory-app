@@ -9,17 +9,21 @@ const protect = async (req, res, next) => {
         req.headers.authorization.startsWith('Bearer')
     ) {
         try {
-            token = req.headers.authorization.split(' ')[1];
+            console.log(`[AuthMW] Auth Header: ${req.headers.authorization}`);
+            token = req.headers.authorization.split(' ')[1].trim();
+            console.log(`[AuthMW] Extracted Token: "${token}"`);
 
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             req.user = await User.findById(decoded.id).select('-password');
 
             if (!req.user) {
+                console.log(`[AuthMW] User NOT FOUND for token`);
                 return res.status(401).json({ message: 'User not found' });
             }
 
             if (!req.user.isActive) {
+                console.log(`[AuthMW] Account deactivated: ${req.user.email}`);
                 return res.status(401).json({ message: 'User account is deactivated' });
             }
 
@@ -29,7 +33,7 @@ const protect = async (req, res, next) => {
 
             next();
         } catch (error) {
-            console.error(error);
+            console.error(`[AuthMW ERROR] ${error.stack || error.message}`);
             res.status(401).json({ message: 'Not authorized, token failed' });
         }
     }

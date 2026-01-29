@@ -18,7 +18,7 @@ import 'package:pos_app/screens/profile_screen.dart';
 import 'package:pos_app/services/offline_service.dart';
 import 'package:pos_app/services/error_service.dart';
 import 'package:pos_app/screens/professional/analytics_screen.dart';
-import 'package:pos_app/screens/professional/audit_logs_screen.dart';
+import 'package:pos_app/screens/audit_logs_screen.dart';
 import 'package:pos_app/screens/professional/branch_mgmt_screen.dart';
 import 'package:pos_app/screens/professional/supplier_mgmt_screen.dart';
 import 'package:pos_app/screens/professional/notification_center.dart';

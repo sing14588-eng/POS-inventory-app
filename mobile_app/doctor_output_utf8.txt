@@ -1,0 +1,42 @@
+﻿[ΓêÜ] Flutter (Channel stable, 3.38.7, on Microsoft Windows [Version 10.0.26100.7623], locale en-US) [897ms]
+    ΓÇó Flutter version 3.38.7 on channel stable at C:\Flutter\flutter
+    ΓÇó Upstream repository https://github.com/flutter/flutter.git
+    ΓÇó Framework revision 3b62efc2a3 (2 weeks ago), 2026-01-13 13:47:42 -0800
+    ΓÇó Engine revision 78fc3012e4
+    ΓÇó Dart version 3.10.7
+    ΓÇó DevTools version 2.51.1
+    ΓÇó Feature flags: enable-web, enable-linux-desktop, enable-macos-desktop, enable-windows-desktop, enable-android, enable-ios, cli-animations, enable-native-assets, omit-legacy-version-file, enable-lldb-debugging
+
+[ΓêÜ] Windows Version (Windows 11 or higher, 24H2, 2009) [2.0s]
+
+[ΓêÜ] Android toolchain - develop for Android devices (Android SDK version 36.1.0) [2.6s]
+    ΓÇó Android SDK at C:\Users\sings\AppData\Local\Android\sdk
+    ΓÇó Emulator version 36.3.10.0 (build_id 14472402) (CL:N/A)
+    ΓÇó Platform android-36, build-tools 36.1.0
+    ΓÇó Java binary at: C:\Program Files\Android\Android Studio\jbr\bin\java
+      This is the JDK bundled with the latest Android Studio installation on this machine.
+      To manually set the JDK path, use: `flutter config --jdk-dir="path/to/jdk"`.
+    ΓÇó Java version OpenJDK Runtime Environment (build 21.0.8+-14196175-b1038.72)
+    ΓÇó All Android licenses accepted.
+
+[ΓêÜ] Chrome - develop for the web [408ms]
+    ΓÇó Chrome at C:\Program Files\Google\Chrome\Application\chrome.exe
+
+[!] Visual Studio - develop Windows apps (Visual Studio Build Tools 2026 18.0.2) [406ms]
+    ΓÇó Visual Studio at C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools
+    ΓÇó Visual Studio Build Tools 2026 version 18.0.11222.15
+    X Visual Studio is missing necessary components. Please re-run the Visual Studio installer for the "Desktop development with C++" workload, and include these components:
+        MSVC v142 - VS 2019 C++ x64/x86 build tools
+         - If there are multiple build tool versions available, install the latest
+        C++ CMake tools for Windows
+        Windows 10 SDK
+
+[ΓêÜ] Connected device (3 available) [238ms]
+    ΓÇó Windows (desktop) ΓÇó windows ΓÇó windows-x64    ΓÇó Microsoft Windows [Version 10.0.26100.7623]
+    ΓÇó Chrome (web)      ΓÇó chrome  ΓÇó web-javascript ΓÇó Google Chrome 144.0.7559.97
+    ΓÇó Edge (web)        ΓÇó edge    ΓÇó web-javascript ΓÇó Microsoft Edge 144.0.3719.92
+
+[ΓêÜ] Network resources [787ms]
+    ΓÇó All expected network resources are available.
+
+! Doctor found issues in 1 category.

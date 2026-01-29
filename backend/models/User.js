@@ -3,8 +3,8 @@ const bcrypt = require('bcryptjs');
 
 const userSchema = mongoose.Schema({
     name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    username: { type: String, unique: true, sparse: true }, // For code-based login
+    email: { type: String, unique: true, sparse: true }, // sparse allows multiple nulls
     password: { type: String, required: true },
     roles: [{
         type: String,
@@ -21,7 +21,9 @@ const userSchema = mongoose.Schema({
         ref: 'Branch'
     },
     isActive: { type: Boolean, default: true },
+    passwordChanged: { type: Boolean, default: true },
     onboardingCompleted: { type: Boolean, default: false },
+    welcomeEmailSent: { type: Boolean, default: false },
 }, {
     timestamps: true,
 });
@@ -31,9 +33,9 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 };
 
 // Encrypt password using bcrypt
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function () {
     if (!this.isModified('password')) {
-        next();
+        return;
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
